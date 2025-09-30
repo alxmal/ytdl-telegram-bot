@@ -158,6 +158,7 @@ bot.on("message:text").on("::url", async (ctx, next) => {
 				formatSelector,
 				"--no-playlist",
 				"--merge-output-format", "mp4",  // Force MP4 merge for all videos
+				"--hls-prefer-native", "false",  // Force ffmpeg for HLS processing
 				...(await cookieArgs()),
 				...additionalArgs,
 			])
