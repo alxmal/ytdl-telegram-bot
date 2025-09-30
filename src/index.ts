@@ -171,6 +171,8 @@ bot.on("message:text").on("::url", async (ctx, next) => {
 			})
 
 			const [download] = info.requested_downloads ?? []
+			console.log("Download object:", download)
+			
 			if (!download || !download.url) {
 				console.log("No download available. Available formats:", info.formats?.map(f => ({
 					format_id: f.format_id,
