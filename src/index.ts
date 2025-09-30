@@ -146,10 +146,10 @@ bot.on("message:text").on("::url", async (ctx, next) => {
 
 			// -----------------------------------------------------------------------------
 			
-			// Simplified format selection for testing
+			// Prefer H.264 MP4 for Telegram compatibility
 			const info = await getInfo(url.text, [
 				"-f",
-				"b",  // back to simple "best" format
+				"bv*[vcodec^=avc1][height<=1080]+ba[acodec^=mp4a]/b[ext=mp4]/b",
 				"--no-playlist",
 				...(await cookieArgs()),
 				...additionalArgs,
