@@ -2,7 +2,7 @@ name: telegram-ytdl
 
 services:
   telegram-bot:
-    image: ghcr.io/vaaski/telegram-ytdl:latest
+    image: ghcr.io/alxmal/ytdl-telegram-bot:latest
     restart: unless-stopped
     volumes:
       - ./vaaski-telegram-ytdl:/app/storage
