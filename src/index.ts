@@ -140,9 +140,9 @@ bot.on("message:text").on("::url", async (ctx, next) => {
 			const useCobalt = cobaltMatcher(url.text)
 			const additionalArgs = isTiktok ? tiktokArgs : []
 
-			if (useCobalt) {
-				if (await useCobaltResolver()) return
-			}
+			// if (useCobalt) {
+			// 	if (await useCobaltResolver()) return
+			// }
 
 			// -----------------------------------------------------------------------------
 			
@@ -199,11 +199,11 @@ bot.on("message:text").on("::url", async (ctx, next) => {
 					},
 				})
 			} else {
-				if (await useCobaltResolver()) return
+				// if (await useCobaltResolver()) return
 				throw new Error("No download available")
 			}
 		} catch (error) {
-			if (await useCobaltResolver()) return
+			// if (await useCobaltResolver()) return
 			return error instanceof Error
 				? errorMessage(ctx.chat, error.message)
 				: errorMessage(ctx.chat, `Couldn't download ${url}`)
