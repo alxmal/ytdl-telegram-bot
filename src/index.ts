@@ -137,6 +137,7 @@ bot.on("message:text").on("::url", async (ctx, next) => {
 		try {
 			const isTiktok = urlMatcher(url.text, "tiktok.com")
 			const isYouTubeMusic = urlMatcher(url.text, "music.youtube.com")
+			const isYouTubeShorts = urlMatcher(url.text, "youtube.com/shorts")
 			const useCobalt = cobaltMatcher(url.text)
 			const additionalArgs = isTiktok ? tiktokArgs : []
 
@@ -147,16 +148,39 @@ bot.on("message:text").on("::url", async (ctx, next) => {
 			// -----------------------------------------------------------------------------
 			
 			// Prefer H.264 MP4 for Telegram compatibility
+			// For Shorts, use more flexible format selection
+			const formatSelector = isYouTubeShorts 
+				? "bv*[height<=1080]+ba/b[ext=mp4]/b"  // More flexible for Shorts
+				: "bv*[vcodec^=avc1][height<=1080]+ba[acodec^=mp4a]/b[ext=mp4]/b"  // Strict for regular videos
+			
 			const info = await getInfo(url.text, [
 				"-f",
-				"bv*[vcodec^=avc1][height<=1080]+ba[acodec^=mp4a]/b[ext=mp4]/b",
+				formatSelector,
 				"--no-playlist",
 				...(await cookieArgs()),
 				...additionalArgs,
 			])
 
+			console.log("yt-dlp info:", {
+				title: info.title,
+				uploader: info.uploader,
+				formats: info.formats?.length || 0,
+				requested_downloads: info.requested_downloads?.length || 0,
+				url: url.text
+			})
+
 			const [download] = info.requested_downloads ?? []
-			if (!download || !download.url) throw new Error("No download available")
+			if (!download || !download.url) {
+				console.log("No download available. Available formats:", info.formats?.map(f => ({
+					format_id: f.format_id,
+					ext: f.ext,
+					vcodec: f.vcodec,
+					acodec: f.acodec,
+					height: f.height,
+					width: f.width
+				})))
+				throw new Error("No download available")
+			}
 
 			const title = removeHashtagsMentions(info.title)
 
