@@ -148,15 +148,16 @@ bot.on("message:text").on("::url", async (ctx, next) => {
 			// -----------------------------------------------------------------------------
 			
 			// Prefer H.264 MP4 for Telegram compatibility
-			// For Shorts, use more flexible format selection
+			// Use flexible format selection that can merge separate streams for all videos
 			const formatSelector = isYouTubeShorts 
-				? "bv*[height<=1080]+ba/b[ext=mp4]/b"  // More flexible for Shorts
-				: "bv*[vcodec^=avc1][height<=1080]+ba[acodec^=mp4a]/b[ext=mp4]/b"  // Strict for regular videos
+				? "bv*[height<=1080]+ba/b[ext=mp4]/b"  // Allow merging separate video+audio streams
+				: "bv*[vcodec^=avc1][height<=1080]+ba[acodec^=mp4a]/bv*[height<=1080]+ba/b[ext=mp4]/b"  // Try combined first, then separate streams
 			
 			const info = await getInfo(url.text, [
 				"-f",
 				formatSelector,
 				"--no-playlist",
+				"--merge-output-format", "mp4",  // Force MP4 merge for all videos
 				...(await cookieArgs()),
 				...additionalArgs,
 			])
