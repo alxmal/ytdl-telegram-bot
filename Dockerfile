@@ -10,15 +10,15 @@ RUN pnpm install --frozen-lockfile
 
 COPY src ./src
 
-RUN apk add python3 ffmpeg deno
+# Устанавливаем системные зависимости
+RUN apk add --no-cache python3 curl ffmpeg
 
-# Если deno пакета нет:
-# RUN apk add --no-cache curl unzip \
-#  && curl -fsSL https://deno.land/install.sh | sh \
-#  && ln -s /root/.deno/bin/deno /usr/local/bin/deno
+# Устанавливаем youtube-dl
+RUN curl -L https://yt-dl.org/downloads/latest/youtube-dl -o /usr/local/bin/youtube-dl
+RUN chmod a+rx /usr/local/bin/youtube-dl
 
-ADD https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp /bin/yt-dlp
-RUN chmod +x /bin/yt-dlp
+# Создаем директорию для cookies
+RUN mkdir -p /app/storage
 
 EXPOSE ${TELEGRAM_WEBHOOK_PORT}
 

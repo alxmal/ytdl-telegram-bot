@@ -5,7 +5,7 @@ services:
     image: ghcr.io/alxmal/ytdl-telegram-bot:latest
     restart: unless-stopped
     volumes:
-      - ./vaaski-telegram-ytdl:/app/storage
+      - ./telegram-ytdl-storage:/app/storage
     environment:
       # get your bot token from @BotFather
       TELEGRAM_BOT_TOKEN: ""

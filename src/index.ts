@@ -1,8 +1,7 @@
-import { downloadFromInfo, getInfo } from "@resync-tv/yt-dlp"
+import { downloadFromInfo, getInfo } from "./youtube-dl"
 import { InputFile } from "grammy"
 import { deleteMessage, errorMessage } from "./bot-util"
-import { cobaltMatcher, cobaltResolver } from "./cobalt"
-import { link, t, tiktokArgs } from "./constants"
+import { link, t } from "./constants"
 import {
 	ADMIN_ID,
 	ALLOW_GROUPS,
@@ -30,42 +29,13 @@ bot.use(async (ctx, next) => {
 	}
 })
 
-//? filter out messages from non-whitelisted users
+//? filter out messages from non-whitelisted users (silent deny)
 bot.on("message:text", async (ctx, next) => {
 	if (WHITELISTED_IDS.length === 0) return await next()
 	if (WHITELISTED_IDS.includes(ctx.from?.id)) return await next()
 
-	const deniedResponse = await ctx.replyWithHTML(t.deniedMessage, {
-		link_preview_options: { is_disabled: true },
-	})
-
-	await Promise.all([
-		(async () => {
-			if (ctx.from.language_code && ctx.from.language_code !== "en") {
-				const translated = await translateText(
-					t.deniedMessage,
-					ctx.from.language_code,
-				)
-				if (translated === t.deniedMessage) return
-				await bot.api.editMessageText(
-					ctx.chat.id,
-					deniedResponse.message_id,
-					translated,
-					{ parse_mode: "HTML", link_preview_options: { is_disabled: true } },
-				)
-			}
-		})(),
-		(async () => {
-			const forwarded = await ctx.forwardMessage(ADMIN_ID, {
-				disable_notification: true,
-			})
-			await bot.api.setMessageReaction(
-				forwarded.chat.id,
-				forwarded.message_id,
-				[{ type: "emoji", emoji: "🖕" }],
-			)
-		})(),
-	])
+	// Silent deny: do not reply, do not forward, just ignore
+	return
 })
 
 bot.on("message:text", async (ctx, next) => {
@@ -98,84 +68,39 @@ bot.on("message:text").on("::url", async (ctx, next) => {
 			})
 	}
 
-	const useCobaltResolver = async () => {
-		try {
-			const resolved = await cobaltResolver(url.text)
-
-			if (resolved.status === "error") {
-				throw resolved.error
-			}
-
-			if (resolved.status === "picker") {
-				const photos = chunkArray(
-					10,
-					resolved.picker
-						.filter((p) => p.type === "photo")
-						.map((p) => ({
-							type: "photo" as const,
-							media: p.url,
-						})),
-				)
-
-				for (const chunk of photos) {
-					await bot.api.sendMediaGroup(ctx.chat.id, chunk)
-				}
-
-				return true
-			}
-
-			if (resolved.status === "redirect") {
-				await ctx.replyWithHTML(link("Resolved content URL", resolved.url))
-				return true
-			}
-		} catch (error) {
-			console.error("Error resolving with cobalt", error)
-		}
-	}
-
 	queue.add(async () => {
 		try {
 			const isTiktok = urlMatcher(url.text, "tiktok.com")
 			const isYouTubeMusic = urlMatcher(url.text, "music.youtube.com")
-			const isYouTubeShorts = urlMatcher(url.text, "youtube.com/shorts")
-			const useCobalt = cobaltMatcher(url.text)
-			const additionalArgs = isTiktok ? tiktokArgs : []
-
-			// if (useCobalt) {
-			// 	if (await useCobaltResolver()) return
-			// }
-
-			// -----------------------------------------------------------------------------
 			
-			// Prefer H.264 MP4 for Telegram compatibility
-			// Use flexible format selection that can merge separate streams for all videos
-			const formatSelector = isYouTubeShorts 
-				? "bv*[height<=1080]+ba/b[ext=mp4]/b"  // Allow merging separate video+audio streams
-				: "bv*[vcodec^=avc1][height<=1080]+ba[acodec^=mp4a]/bv*[height<=1080]+ba/b[ext=mp4]/b"  // Try combined first, then separate streams
+			// Для youtube-dl используем более простой селектор
+			const formatSelector = "best[height<=1080]/best"
 			
 			const info = await getInfo(url.text, [
 				"-f",
 				formatSelector,
 				"--no-playlist",
-				"--merge-output-format", "mp4",  // Force MP4 merge for all videos
-				"--hls-prefer-ffmpeg",  // Force ffmpeg for HLS processing
 				...(await cookieArgs()),
-				...additionalArgs,
-			])
+				])
 
-			console.log("yt-dlp info:", {
+			console.log("youtube-dl info:", {
 				title: info.title,
 				uploader: info.uploader,
 				formats: info.formats?.length || 0,
-				requested_downloads: info.requested_downloads?.length || 0,
 				url: url.text
 			})
 
-			const [download] = info.requested_downloads ?? []
-			console.log("Download object:", download)
+			// Находим пригодный формат (прогрессивный с url)
+			const suitableFormat =
+				info.formats?.find(
+					(f) =>
+						f.vcodec !== "none" &&
+						f.acodec !== "none" &&
+						typeof f.url === "string",
+				) ?? info.formats?.find((f) => typeof f.url === "string")
 			
-			if (!download || !download.url) {
-				console.log("No download available. Available formats:", info.formats?.map(f => ({
+			if (!suitableFormat || !suitableFormat.url) {
+				console.log("No suitable format found. Available formats:", info.formats?.map(f => ({
 					format_id: f.format_id,
 					ext: f.ext,
 					vcodec: f.vcodec,
@@ -183,19 +108,19 @@ bot.on("message:text").on("::url", async (ctx, next) => {
 					height: f.height,
 					width: f.width
 				})))
-				throw new Error("No download available")
+				throw new Error("No suitable format available")
 			}
 
 			const title = removeHashtagsMentions(info.title)
 
-			if (download.vcodec !== "none" && !isYouTubeMusic) {
+			if (suitableFormat.vcodec !== "none" && !isYouTubeMusic) {
 				let video: InputFile | string
 
 				if (isTiktok) {
 					const stream = downloadFromInfo(info, "-")
 					video = new InputFile(stream.stdout, title)
 				} else {
-					video = new InputFile({ url: download.url }, title)
+					video = new InputFile({ url: suitableFormat.url }, title)
 				}
 
 				await ctx.replyWithVideo(video, {
@@ -207,7 +132,7 @@ bot.on("message:text").on("::url", async (ctx, next) => {
 						allow_sending_without_reply: true,
 					},
 				})
-			} else if (download.acodec !== "none") {
+			} else if (suitableFormat.acodec !== "none") {
 				const stream = downloadFromInfo(info, "-", [
 					"-x",
 					"--audio-format",
@@ -227,7 +152,6 @@ bot.on("message:text").on("::url", async (ctx, next) => {
 					},
 				})
 			} else {
-				// if (await useCobaltResolver()) return
 				throw new Error("No download available")
 			}
 		} catch (error) {

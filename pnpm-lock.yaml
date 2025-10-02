@@ -11,9 +11,6 @@ importers:
       '@grammyjs/parse-mode':
         specifier: ^1.11.1
         version: 1.11.1(grammy@1.35.0)
-      '@resync-tv/yt-dlp':
-        specifier: 0.5.1
-        version: 0.5.1(typescript@5.7.3)
       croner:
         specifier: ^9.0.0
         version: 9.0.0
@@ -259,11 +256,6 @@ packages:
 
   '@grammyjs/types@3.19.0':
     resolution: {integrity: sha512-N0MS+RJG+AGSNuka1GWVj88oyK1oti4I0eQq6jGo4hic3P9MwFfnHjGQuIExZ3tlJUrZYwC/T7gk4Tu3+guJyg==}
-
-  '@resync-tv/yt-dlp@0.5.1':
-    resolution: {integrity: sha512-/BTY0W5I7aGwmDurJniwS9YAPWk5P8WTEgPxFhiTo+wTs61fzZhuAuwp+lmlEwSIz87q/YC52bBvd9z74DHFZQ==}
-    peerDependencies:
-      typescript: ^5.0.0
 
   '@types/body-parser@1.19.5':
     resolution: {integrity: sha512-fB3Zu92ucau0iQ0JMCFQE7b/dv8Ot07NI3KaZIkIUNXq82k4eBAqUaneXfleGY9JWskeS9y+u0nXMyspcuQrCg==}
@@ -804,10 +796,6 @@ snapshots:
       grammy: 1.35.0
 
   '@grammyjs/types@3.19.0': {}
-
-  '@resync-tv/yt-dlp@0.5.1(typescript@5.7.3)':
-    dependencies:
-      typescript: 5.7.3
 
   '@types/body-parser@1.19.5':
     dependencies:

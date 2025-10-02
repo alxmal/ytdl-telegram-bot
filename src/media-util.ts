@@ -1,5 +1,11 @@
-import type { ytDlpInfo } from "@resync-tv/yt-dlp"
 import { InputFile } from "grammy"
+
+type Thumbnail = {
+	url: string
+	width?: number
+	height?: number
+	resolution?: string
+}
 
 export const urlMatcher = (url: string, matcher: string) => {
 	const parsed = new URL(url)
@@ -11,7 +17,7 @@ export const urlMatcher = (url: string, matcher: string) => {
  *
  * https://core.telegram.org/bots/api#sendaudio
  */
-export const getThumbnail = (thumbnails?: ytDlpInfo.Thumbnail[]) => {
+export const getThumbnail = (thumbnails?: Thumbnail[]) => {
 	if (!thumbnails) return undefined
 
 	const MAX_SIZE = 320
