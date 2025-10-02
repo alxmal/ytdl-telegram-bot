@@ -10,10 +10,8 @@ RUN pnpm install --frozen-lockfile
 
 COPY src ./src
 
-RUN apk add --no-cache python3 curl ffmpeg
-RUN curl -L https://yt-dl.org/downloads/latest/youtube-dl -o /usr/local/bin/youtube-dl
-RUN chmod a+rx /usr/local/bin/youtube-dl
-RUN ln -sf /usr/bin/python3 /usr/bin/python
+RUN apk add --no-cache python3 py3-pip ffmpeg
+RUN pip3 install --no-cache-dir youtube-dl
 
 # Создаем директорию для cookies
 RUN mkdir -p /app/storage
