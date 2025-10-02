@@ -11,14 +11,15 @@ RUN pnpm install --frozen-lockfile
 COPY src ./src
 
 # deps
-RUN apk add --no-cache python3 py3-pip ffmpeg git ca-certificates && update-ca-certificates
+RUN apk add --no-cache python3 ffmpeg curl
 
-# venv (обход PEP 668)
-RUN python3 -m venv /opt/venv
-ENV PATH="/opt/venv/bin:${PATH}"
-
-# youtube-dl из master (а не старый релиз)
-RUN pip install --no-cache-dir "git+https://github.com/ytdl-org/youtube-dl@master"
+# youtube-dl nightly (zipimport executable)
+RUN curl -fsSL https://github.com/ytdl-org/ytdl-nightly/releases/latest/download/youtube-dl -o /usr/local/bin/youtube-dl \
+ && chmod +x /usr/local/bin/youtube-dl \
+ && ln -sf /usr/bin/python3 /usr/bin/python
+ 
+# (опционально) очистить кэш один раз, если были сигнатурные ошибки
+# RUN /usr/local/bin/youtube-dl --rm-cache-dir
 
 # Создаем директорию для cookies
 RUN mkdir -p /app/storage
