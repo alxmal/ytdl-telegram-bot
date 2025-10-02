@@ -10,13 +10,10 @@ RUN pnpm install --frozen-lockfile
 
 COPY src ./src
 
-# Устанавливаем системные зависимости
 RUN apk add --no-cache python3 curl ffmpeg
-RUN ln -sf /usr/bin/python
-
-# Устанавливаем youtube-dl
-RUN curl -L https://yt-dl.org/downloads/latest/youtube-dl -o /usr/local/bin/youtube-dl
+RUN curl -L https://yt-dl.org/downloads/latest/youtube-dl -O /usr/local/bin/youtube-dl
 RUN chmod a+rx /usr/local/bin/youtube-dl
+RUN ln -sf /usr/bin/python3 /usr/bin/python
 
 # Создаем директорию для cookies
 RUN mkdir -p /app/storage
