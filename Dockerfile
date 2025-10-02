@@ -11,11 +11,10 @@ RUN pnpm install --frozen-lockfile
 COPY src ./src
 
 # deps
-RUN apk add --no-cache python3 py3-pip ffmpeg curl
-RUN python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel
+RUN apk add --no-cache python3 py3-pip ffmpeg ca-certificates openssl && update-ca-certificates
 
-# установить youtube-dl через pip
-RUN python3 -m pip install --no-cache-dir --upgrade youtube-dl
+# ставим youtube-dl без апгрейда pip
+RUN python3 -m pip install -vv --no-cache-dir --disable-pip-version-check youtube-dl
 
 # Создаем директорию для cookies
 RUN mkdir -p /app/storage
