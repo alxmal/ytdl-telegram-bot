@@ -106,7 +106,7 @@ bot.on("message:text", async (ctx, next) => {
  * Группы: команда `/vid <url>` в чатах из `WHITELISTED_CHAT_IDS`.
  * Если `WHITELISTED_IDS` задан, доступна только перечисленным юзерам.
  */
-bot.command("vid", async (ctx) => {
+bot.command("v", async (ctx) => {
 	// Allow only in whitelisted chats
 	if (!WHITELISTED_CHAT_IDS.includes(ctx.chat.id)) return
 	if (WHITELISTED_IDS.length > 0 && (!ctx.from || !WHITELISTED_IDS.includes(ctx.from.id))) return
