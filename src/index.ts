@@ -51,6 +51,8 @@ bot.on("message:text", async (ctx, next) => {
 })
 
 bot.on("message:text").on("::url", async (ctx, next) => {
+	// Ignore URL messages in group chats; only handle in private
+	if (ctx.chat?.type !== "private") return await next()
 	const [url] = ctx.entities("url")
 	if (!url) return await next()
 
