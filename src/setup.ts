@@ -12,7 +12,7 @@ export const bot = new Bot<ParseModeFlavor<Context>>(BOT_TOKEN, {
 })
 
 await bot.api.setMyCommands(
-	[{ command: "vid", description: "Загрузить видео: /vid <url>" }, { command: "chatid", description: "Узнать chat id" }],
+	[{ command: "v", description: "Загрузить видео: /v <url>" }, { command: "chatid", description: "Узнать chat id" }],
 	{ scope: { type: "all_group_chats" } }, // команды для всех групп
 )
 
