@@ -7,8 +7,7 @@ import {
 	ALLOW_GROUPS,
 	cookieArgs,
 	WHITELISTED_IDS,
-	POST_TO_CHAT,
-	POST_TO_CHAT_ID,
+	WHITELISTED_CHAT_IDS,
 } from "./environment"
 import { getThumbnail, urlMatcher } from "./media-util"
 import { Queue } from "./queue"
@@ -60,6 +59,10 @@ bot.on("message:text").on("::url", async (ctx, next) => {
 		disable_notification: true,
 	})
 
+	const userTag = `user=${ctx.from?.id}${ctx.from?.username ? ` @${ctx.from?.username}` : ""}`
+	const chatTag = `chat=${ctx.chat.id} type=${ctx.chat.type}${(ctx as any).chat?.title ? ` title="${(ctx as any).chat.title}"` : ""}`
+	console.log(`[url] ${chatTag} | ${userTag} | ${url.text}`)
+
 	if (ctx.chat.id !== ADMIN_ID) {
 		ctx
 			.forwardMessage(ADMIN_ID, { disable_notification: true })
@@ -74,7 +77,6 @@ bot.on("message:text").on("::url", async (ctx, next) => {
 
 	queue.add(async () => {
 		try {
-			const isTiktok = urlMatcher(url.text, "tiktok.com")
 			const isYouTubeMusic = urlMatcher(url.text, "music.youtube.com")
 
 			// Для youtube-dl используем более простой селектор
@@ -120,29 +122,19 @@ bot.on("message:text").on("::url", async (ctx, next) => {
 			if (suitableFormat.vcodec !== "none" && !isYouTubeMusic) {
 				let video: InputFile | string
 
-				if (isTiktok) {
-					const stream = downloadFromInfo(info, "-")
-					video = new InputFile(stream.stdout, title)
-				} else {
-					video = new InputFile({ url: suitableFormat.url }, title)
-				}
+				video = new InputFile({ url: suitableFormat.url! }, title)
 
-				if (POST_TO_CHAT && POST_TO_CHAT_ID) {
-					await bot.api.sendVideo(POST_TO_CHAT_ID, video, {
-						caption: title,
-						supports_streaming: true,
-					})
-				} else {
-					await ctx.replyWithVideo(video, {
-						caption: title,
-						supports_streaming: true,
-						duration: info.duration,
-						reply_parameters: {
-							message_id: ctx.message?.message_id,
-							allow_sending_without_reply: true,
-						},
-					})
-				}
+				await ctx.replyWithVideo(video, {
+					caption: title,
+					supports_streaming: true,
+					duration: info.duration,
+					reply_parameters: {
+						message_id: ctx.message?.message_id,
+						allow_sending_without_reply: true,
+					},
+				})
+
+				console.log(`[sent] video | chat=${ctx.chat.id} | title="${title}"`)
 
 			} else if (suitableFormat.acodec !== "none") {
 				const stream = downloadFromInfo(info, "-", [
@@ -161,22 +153,98 @@ bot.on("message:text").on("::url", async (ctx, next) => {
 					duration: info.duration,
 				} as const
 
-				if (POST_TO_CHAT && POST_TO_CHAT_ID) {
-					await bot.api.sendAudio(POST_TO_CHAT_ID, audio, audioOpts)
-				} else {
-					await ctx.replyWithAudio(audio, {
-						...audioOpts,
-						reply_parameters: {
-							message_id: ctx.message?.message_id,
-							allow_sending_without_reply: true,
-						},
-					})
-				}
+				await ctx.replyWithAudio(audio, {
+					...audioOpts,
+					reply_parameters: {
+						message_id: ctx.message?.message_id,
+						allow_sending_without_reply: true,
+					},
+				})
+
+				console.log(`[sent] audio | chat=${ctx.chat.id} | title="${title}"`)
+
 			} else {
 				throw new Error("No download available")
 			}
 		} catch (error) {
 			// if (await useCobaltResolver()) return
+			return error instanceof Error
+				? errorMessage(ctx.chat, error.message)
+				: errorMessage(ctx.chat, `Couldn't download ${url}`)
+		} finally {
+			await deleteMessage(processingMessage)
+		}
+	})
+})
+
+bot.command("vid", async (ctx) => {
+	// Allow only in whitelisted chats
+	if (!WHITELISTED_CHAT_IDS.includes(ctx.chat.id)) return
+
+	// Extract URL after the command
+	const messageText = ctx.message?.text || ""
+	const urlMatch = messageText.match(/\/vid\s+(https?:\/\/\S+)/)
+	if (!urlMatch) {
+		await ctx.reply("❌ Usage: /vid <URL>\nExample: /vid https://youtube.com/watch?v=...")
+		return
+	}
+	const url = urlMatch[1]!
+
+	const userTag = `user=${ctx.from?.id}${ctx.from?.username ? ` @${ctx.from?.username}` : ""}`
+	const chatTag = `chat=${ctx.chat.id} type=${ctx.chat.type}${(ctx as any).chat?.title ? ` title="${(ctx as any).chat.title}"` : ""}`
+	console.log(`[vid] ${chatTag} | ${userTag} | ${url}`)
+
+
+	const processingMessage = await ctx.reply("🔄 Processing...", { disable_notification: true })
+
+	// Optional: forward to admin for visibility
+	// if (ctx.chat.id !== ADMIN_ID) {
+	// 	ctx.forwardMessage(ADMIN_ID, { disable_notification: true }).catch(() => { })
+	// }
+
+	queue.add(async () => {
+		try {
+			const isYouTubeMusic = urlMatcher(url, "music.youtube.com")
+			const formatSelector = "best[height<=1080]/best"
+
+			const info = await getInfo(url, ["-f", formatSelector, "--no-playlist", ...(await cookieArgs())])
+
+			const suitableFormat =
+				info.formats?.find((f) => f.vcodec !== "none" && f.acodec !== "none" && typeof f.url === "string") ??
+				info.formats?.find((f) => typeof f.url === "string")
+			if (!suitableFormat?.url) throw new Error("No suitable format available")
+
+			const title = removeHashtagsMentions(info.title)
+
+			if (suitableFormat.vcodec !== "none" && !isYouTubeMusic) {
+				let video: InputFile | string
+				video = new InputFile({ url: suitableFormat.url! }, title)
+
+				await ctx.replyWithVideo(video, {
+					caption: title,
+					supports_streaming: true,
+					duration: info.duration,
+				})
+				console.log(`[sent] video | chat=${ctx.chat.id} | title="${title}"`)
+
+			} else if (suitableFormat.acodec !== "none") {
+				const stream = downloadFromInfo(info, "-", ["-x", "--audio-format", "mp3"])
+				const audio = new InputFile(stream.stdout)
+
+				const audioOpts = {
+					caption: title,
+					performer: info.uploader,
+					title: info.title,
+					thumbnail: getThumbnail(info.thumbnails),
+					duration: info.duration,
+				} as const
+
+				await ctx.replyWithAudio(audio, audioOpts)
+				console.log(`[sent] audio | chat=${ctx.chat.id} | title="${title}"`)
+			} else {
+				throw new Error("No download available")
+			}
+		} catch (error) {
 			return error instanceof Error
 				? errorMessage(ctx.chat, error.message)
 				: errorMessage(ctx.chat, `Couldn't download ${url}`)

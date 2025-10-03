@@ -18,8 +18,7 @@ services:
 
       # whether to allow groups (optional, defaults to "false")
       ALLOW_GROUPS: "true"
-      POST_TO_CHAT: "true"
-      POST_TO_CHAT_ID: "-1001849477403"
+      WHITELISTED_CHAT_IDS: "-1001849477403"
 
       TELEGRAM_API_ROOT: "http://telegram-bot-api:8081"
       TELEGRAM_WEBHOOK_PORT: "8443"

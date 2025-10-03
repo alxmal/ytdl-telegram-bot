@@ -25,8 +25,10 @@ export const WHITELISTED_IDS = getVariable("WHITELISTED_IDS", "")
 	.map((id) => Number.parseInt(id))
 	.filter((id) => !Number.isNaN(id))
 export const ALLOW_GROUPS = getVariable("ALLOW_GROUPS", "false") !== "false"
-export const POST_TO_CHAT = getVariable("POST_TO_CHAT", "false") !== "false"
-export const POST_TO_CHAT_ID = Number.parseInt(getVariable("POST_TO_CHAT_ID"))
+export const WHITELISTED_CHAT_IDS = getVariable("WHITELISTED_CHAT_IDS", "")
+	.split(",")
+	.map((id) => Number.parseInt(id))
+	.filter((id) => !Number.isNaN(id))
 
 export const OPENAI_API_KEY = getVariable("OPENAI_API_KEY", "")
 export const COBALT_INSTANCE_URL = getVariable("COBALT_INSTANCE_URL", "")
@@ -38,7 +40,7 @@ export const cookieArgs = async () => {
 		if (stats.isFile()) {
 			return ["--cookies", COOKIE_FILE]
 		}
-	} catch {}
+	} catch { }
 
 	return []
 }

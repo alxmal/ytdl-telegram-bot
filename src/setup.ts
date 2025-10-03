@@ -11,6 +11,23 @@ export const bot = new Bot<ParseModeFlavor<Context>>(BOT_TOKEN, {
 	botInfo: undefined,
 })
 
+await bot.api.setMyCommands(
+	[{ command: "vid", description: "Загрузить видео: /vid <url>" }],
+	{ scope: { type: "all_group_chats" } }, // команды для всех групп
+)
+
+// (опционально) команды для лички
+await bot.api.setMyCommands(
+	[], // например, пусто или свои команды для лички
+	{ scope: { type: "all_private_chats" } },
+)
+
+// (опционально) для конкретного чата
+// await bot.api.setMyCommands(
+//   [{ command: "vid", description: "Загрузить видео" }],
+//   { scope: { type: "chat", chat_id: -1001234567890 } },
+// )
+
 bot.use(hydrateReply)
 
 export const server = express()
