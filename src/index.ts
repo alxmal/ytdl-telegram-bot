@@ -36,9 +36,8 @@ bot.use(async (ctx, next) => {
  */
 bot.on("message:text", async (ctx, next) => {
 	if (WHITELISTED_IDS.length === 0) return await next()
+	if (WHITELISTED_CHAT_IDS.includes(ctx.chat?.id ?? 0)) return await next()
 	if (ctx.from && WHITELISTED_IDS.includes(ctx.from.id)) return await next()
-
-	// Silent deny: do not reply, do not forward, just ignore
 	return
 })
 
@@ -75,6 +74,32 @@ bot.on("message:text").on("::url", async (ctx, next) => {
 	}
 
 	await processVideoRequest(ctx, href, queue, "url")
+})
+
+/** NAV: HANDLER mention-with-url
+ * Группы: сообщение с упоминанием бота и URL → скачать и отправить в этот чат.
+ */
+bot.on("message:text", async (ctx, next) => {
+	// Только whitelisted чаты
+	if (!WHITELISTED_CHAT_IDS.includes(ctx.chat?.id ?? 0)) return await next()
+
+	// Проверка юзера как в /vid (если список не пуст)
+	if (WHITELISTED_IDS.length > 0 && (!ctx.from || !WHITELISTED_IDS.includes(ctx.from.id))) {
+		return
+	}
+
+	// Упоминание бота
+	const me = bot.botInfo?.username
+	if (!me) return await next()
+	const mentioned = ctx.entities("mention").some((m) => m.text === `@${me}`)
+	if (!mentioned) return await next()
+
+	// URL в сообщении
+	const [urlEnt] = ctx.entities("url")
+	const href = urlEnt?.text
+	if (!href) return await next()
+
+	await processVideoRequest(ctx, href, queue, "mention")
 })
 
 /** NAV: COMMAND vid
