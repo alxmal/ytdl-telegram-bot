@@ -185,6 +185,8 @@ bot.on("message:text").on("::url", async (ctx, next) => {
 })
 
 bot.on("message:text", async (ctx) => {
+	// Do not send reminders in group chats
+	if (ctx.chat?.type !== "private") return
 	const response = await ctx.replyWithHTML(t.urlReminder)
 
 	if (ctx.from.language_code && ctx.from.language_code !== "en") {
