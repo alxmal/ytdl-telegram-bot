@@ -54,13 +54,13 @@ export const getThumbnail = (thumbnails?: Thumbnail[]) => {
 
 /** NAV: HELPER processVideoRequest
  * Унифицированная обработка скачивания/отправки видео или аудио по URL.
- * Переиспользуется в личке, в команде `/vid`, и при упоминании бота.
+ * Переиспользуется в личке, в команде `/v`, и при упоминании бота.
  * @param ctx grammy Context
  * @param href ссылка на контент
  * @param queue очередь для сериализации задач
- * @param source источник вызова: "url" | "vid" | "mention"
+ * @param source источник вызова: "url" | "v" | "mention"
  */
-export async function processVideoRequest(ctx: Context, href: string, queue: Queue, source: "url" | "vid" | "mention") {
+export async function processVideoRequest(ctx: Context, href: string, queue: Queue, source: "url" | "v" | "mention") {
 	const userTag = `user=${ctx.from?.id}${ctx.from?.username ? ` @${ctx.from?.username}` : ""}`
 	const chatTag = `chat=${ctx.chat?.id} type=${ctx.chat?.type}${(ctx as any).chat?.title ? ` title="${(ctx as any).chat.title}"` : ""}`
 	console.log(`[${source}] ${chatTag} | ${userTag} | ${href}`)

@@ -83,7 +83,7 @@ bot.on("message:text", async (ctx, next) => {
 	// Только whitelisted чаты
 	if (!WHITELISTED_CHAT_IDS.includes(ctx.chat?.id ?? 0)) return await next()
 
-	// Проверка юзера как в /vid (если список не пуст)
+	// Проверка юзера как в /v (если список не пуст)
 	if (WHITELISTED_IDS.length > 0 && (!ctx.from || !WHITELISTED_IDS.includes(ctx.from.id))) {
 		return
 	}
@@ -102,8 +102,8 @@ bot.on("message:text", async (ctx, next) => {
 	await processVideoRequest(ctx, href, queue, "mention")
 })
 
-/** NAV: COMMAND vid
- * Группы: команда `/vid <url>` в чатах из `WHITELISTED_CHAT_IDS`.
+/** NAV: COMMAND v
+ * Группы: команда `/v <url>` в чатах из `WHITELISTED_CHAT_IDS`.
  * Если `WHITELISTED_IDS` задан, доступна только перечисленным юзерам.
  */
 bot.command("v", async (ctx) => {
@@ -113,14 +113,14 @@ bot.command("v", async (ctx) => {
 
 	// Extract URL after the command
 	const messageText = ctx.message?.text || ""
-	const urlMatch = messageText.match(/\/vid\s+(https?:\/\/\S+)/)
+	const urlMatch = messageText.match(/\/v\s+(https?:\/\/\S+)/)
 	if (!urlMatch) {
-		await ctx.reply("❌ Usage: /vid <URL>\nExample: /vid https://youtube.com/watch?v=...")
+		await ctx.reply("❌ Usage: /v <URL>\nExample: /v https://youtube.com/watch?v=...")
 		return
 	}
 	const url = urlMatch[1]!
 
-	await processVideoRequest(ctx, url, queue, "vid")
+	await processVideoRequest(ctx, url, queue, "v")
 })
 
 /** NAV: COMMAND chatid
