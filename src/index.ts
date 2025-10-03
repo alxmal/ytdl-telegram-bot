@@ -254,6 +254,11 @@ bot.command("vid", async (ctx) => {
 	})
 })
 
+bot.command("chatid", async (ctx) => {
+	if (ctx.from?.id !== ADMIN_ID) return
+	await ctx.reply(`chat id: ${ctx.chat.id}`)
+})
+
 bot.on("message:text", async (ctx) => {
 	// Do not send reminders in group chats
 	if (ctx.chat?.type !== "private") return
