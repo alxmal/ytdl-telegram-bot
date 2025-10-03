@@ -180,6 +180,7 @@ bot.on("message:text").on("::url", async (ctx, next) => {
 bot.command("vid", async (ctx) => {
 	// Allow only in whitelisted chats
 	if (!WHITELISTED_CHAT_IDS.includes(ctx.chat.id)) return
+	if (WHITELISTED_IDS.length > 0 && (!ctx.from || !WHITELISTED_IDS.includes(ctx.from.id))) return
 
 	// Extract URL after the command
 	const messageText = ctx.message?.text || ""
