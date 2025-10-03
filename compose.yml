@@ -11,13 +11,15 @@ services:
       TELEGRAM_BOT_TOKEN: ""
 
       # comma separated list of telegram user ids, leave empty to allow all users
-      WHITELISTED_IDS: "123456789,987654321"
+      WHITELISTED_IDS: "123456789,987654321,254912897"
 
       # admin user id
       ADMIN_ID: "123456789"
 
       # whether to allow groups (optional, defaults to "false")
-      ALLOW_GROUPS: "false"
+      ALLOW_GROUPS: "true"
+      POST_TO_CHAT: "true"
+      POST_TO_CHAT_ID: "-1001849477403"
 
       TELEGRAM_API_ROOT: "http://telegram-bot-api:8081"
       TELEGRAM_WEBHOOK_PORT: "8443"

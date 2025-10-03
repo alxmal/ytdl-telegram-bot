@@ -7,6 +7,8 @@ import {
 	ALLOW_GROUPS,
 	cookieArgs,
 	WHITELISTED_IDS,
+	POST_TO_CHAT,
+	POST_TO_CHAT_ID,
 } from "./environment"
 import { getThumbnail, urlMatcher } from "./media-util"
 import { Queue } from "./queue"
@@ -72,16 +74,16 @@ bot.on("message:text").on("::url", async (ctx, next) => {
 		try {
 			const isTiktok = urlMatcher(url.text, "tiktok.com")
 			const isYouTubeMusic = urlMatcher(url.text, "music.youtube.com")
-			
+
 			// Для youtube-dl используем более простой селектор
 			const formatSelector = "best[height<=1080]/best"
-			
+
 			const info = await getInfo(url.text, [
 				"-f",
 				formatSelector,
 				"--no-playlist",
 				...(await cookieArgs()),
-				])
+			])
 
 			console.log("youtube-dl info:", {
 				title: info.title,
@@ -98,7 +100,7 @@ bot.on("message:text").on("::url", async (ctx, next) => {
 						f.acodec !== "none" &&
 						typeof f.url === "string",
 				) ?? info.formats?.find((f) => typeof f.url === "string")
-			
+
 			if (!suitableFormat || !suitableFormat.url) {
 				console.log("No suitable format found. Available formats:", info.formats?.map(f => ({
 					format_id: f.format_id,
@@ -123,34 +125,51 @@ bot.on("message:text").on("::url", async (ctx, next) => {
 					video = new InputFile({ url: suitableFormat.url }, title)
 				}
 
-				await ctx.replyWithVideo(video, {
-					caption: title,
-					supports_streaming: true,
-					duration: info.duration,
-					reply_parameters: {
-						message_id: ctx.message?.message_id,
-						allow_sending_without_reply: true,
-					},
-				})
+				if (POST_TO_CHAT && POST_TO_CHAT_ID) {
+					await bot.api.sendVideo(POST_TO_CHAT_ID, video, {
+						caption: title,
+						supports_streaming: true,
+					})
+				} else {
+					await ctx.replyWithVideo(video, {
+						caption: title,
+						supports_streaming: true,
+						duration: info.duration,
+						reply_parameters: {
+							message_id: ctx.message?.message_id,
+							allow_sending_without_reply: true,
+						},
+					})
+				}
+
 			} else if (suitableFormat.acodec !== "none") {
 				const stream = downloadFromInfo(info, "-", [
 					"-x",
 					"--audio-format",
 					"mp3",
 				])
+
 				const audio = new InputFile(stream.stdout)
 
-				await ctx.replyWithAudio(audio, {
+				const audioOpts = {
 					caption: title,
 					performer: info.uploader,
 					title: info.title,
 					thumbnail: getThumbnail(info.thumbnails),
 					duration: info.duration,
-					reply_parameters: {
-						message_id: ctx.message?.message_id,
-						allow_sending_without_reply: true,
-					},
-				})
+				} as const
+
+				if (POST_TO_CHAT && POST_TO_CHAT_ID) {
+					await bot.api.sendAudio(POST_TO_CHAT_ID, audio, audioOpts)
+				} else {
+					await ctx.replyWithAudio(audio, {
+						...audioOpts,
+						reply_parameters: {
+							message_id: ctx.message?.message_id,
+							allow_sending_without_reply: true,
+						},
+					})
+				}
 			} else {
 				throw new Error("No download available")
 			}
