@@ -100,9 +100,17 @@ bot.on("message:text", async (ctx, next) => {
 	const href = urlEnt?.text
 	if (!href) return await next()
 
+	const chatIdToDelete_mention = ctx.chat?.id
+	const messageIdToDelete_mention = ctx.message?.message_id
 	const ok = await processVideoRequest(ctx, href, queue, "mention")
-	if (ok && DELETE_TRIGGER_MESSAGES && ctx.chat?.type !== "private" && ctx.message) {
-		await bot.api.deleteMessage(ctx.chat.id, ctx.message.message_id).catch(() => { });
+	if (
+		ok &&
+		DELETE_TRIGGER_MESSAGES &&
+		ctx.chat?.type !== "private" &&
+		chatIdToDelete_mention &&
+		messageIdToDelete_mention
+	) {
+		await bot.api.deleteMessage(chatIdToDelete_mention, messageIdToDelete_mention).catch(() => { })
 	}
 })
 
@@ -124,9 +132,17 @@ bot.command("v", async (ctx) => {
 	}
 	const url = urlMatch[1]!
 
+	const chatIdToDelete_v = ctx.chat?.id
+	const messageIdToDelete_v = ctx.message?.message_id
 	const ok = await processVideoRequest(ctx, url, queue, "v")
-	if (ok && DELETE_TRIGGER_MESSAGES && ctx.chat?.type !== "private" && ctx.message) {
-		await bot.api.deleteMessage(ctx.chat.id, ctx.message.message_id).catch(() => { });
+	if (
+		ok &&
+		DELETE_TRIGGER_MESSAGES &&
+		ctx.chat?.type !== "private" &&
+		chatIdToDelete_v &&
+		messageIdToDelete_v
+	) {
+		await bot.api.deleteMessage(chatIdToDelete_v, messageIdToDelete_v).catch(() => { })
 	}
 })
 
