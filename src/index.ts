@@ -85,16 +85,11 @@ bot.on("message:text", async (ctx, next) => {
 	if (!WHITELISTED_CHAT_IDS.includes(ctx.chat?.id ?? 0)) return await next()
 	if (WHITELISTED_IDS.length > 0 && (!ctx.from || !WHITELISTED_IDS.includes(ctx.from.id))) return await next()
 
-
 	// Упоминание бота
 	const me = bot.botInfo?.username
 	if (!me) return await next()
 	const mentioned = ctx.entities("mention").some((m) => m.text === `@${me}`)
 	if (!mentioned) return await next()
-
-	// Избежать пересечения с /v: если есть команда, не обрабатывать как mention
-	const hasBotCommand = ctx.entities("bot_command").length > 0
-	if (hasBotCommand) return await next()
 
 	// URL в сообщении
 	const [urlEnt] = ctx.entities("url")
@@ -103,13 +98,11 @@ bot.on("message:text", async (ctx, next) => {
 
 	const chatId = ctx.chat?.id
 	const msgId = ctx.message?.message_id
-	void (async () => {
-		const ok = await processVideoRequest(ctx, url, queue, "mention" /* или "v" */)
-		if (ok && DELETE_TRIGGER_MESSAGES && ctx.chat?.type !== "private" && chatId && msgId) {
-			await bot.api.deleteMessage(chatId, msgId).catch(() => { })
-		}
-	})()
-	return
+
+	const ok = await processVideoRequest(ctx, url, queue, "mention")
+	if (ok && DELETE_TRIGGER_MESSAGES && ctx.chat?.type !== "private") {
+		await bot.api.deleteMessage(chatId, msgId).catch(() => { })
+	}
 })
 
 /** NAV: COMMAND v
@@ -132,13 +125,10 @@ bot.command("v", async (ctx, next) => {
 
 	const chatId = ctx.chat?.id
 	const msgId = ctx.message?.message_id
-	void (async () => {
-		const ok = await processVideoRequest(ctx, url, queue, "mention" /* или "v" */)
-		if (ok && DELETE_TRIGGER_MESSAGES && ctx.chat?.type !== "private" && chatId && msgId) {
-			await bot.api.deleteMessage(chatId, msgId).catch(() => { })
-		}
-	})()
-	return
+	const ok = await processVideoRequest(ctx, url, queue, "v")
+	if (ok && DELETE_TRIGGER_MESSAGES && ctx.chat?.type !== "private" && chatId && msgId) {
+		await bot.api.deleteMessage(chatId, msgId).catch(() => { })
+	}
 })
 
 /** NAV: COMMAND chatid
