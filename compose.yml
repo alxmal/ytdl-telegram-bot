@@ -19,6 +19,7 @@ services:
       # whether to allow groups (optional, defaults to "false")
       ALLOW_GROUPS: "true"
       WHITELISTED_CHAT_IDS: "-1001849477403"
+      DELETE_TRIGGER_MESSAGES: "true"
 
       TELEGRAM_API_ROOT: "http://telegram-bot-api:8081"
       TELEGRAM_WEBHOOK_PORT: "8443"

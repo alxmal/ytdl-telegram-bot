@@ -5,6 +5,7 @@ import {
 	ALLOW_GROUPS,
 	WHITELISTED_IDS,
 	WHITELISTED_CHAT_IDS,
+	DELETE_TRIGGER_MESSAGES,
 } from "./environment"
 import { processVideoRequest } from "./media-util"
 import { Queue } from "./queue"
@@ -100,6 +101,10 @@ bot.on("message:text", async (ctx, next) => {
 	if (!href) return await next()
 
 	await processVideoRequest(ctx, href, queue, "mention")
+
+	if (DELETE_TRIGGER_MESSAGES && ctx.message) {
+		await bot.api.deleteMessage(ctx.chat.id, ctx.message.message_id).catch(() => { })
+	}
 })
 
 /** NAV: COMMAND v
@@ -115,12 +120,16 @@ bot.command("v", async (ctx) => {
 	const messageText = ctx.message?.text || ""
 	const urlMatch = messageText.match(/\/v\s+(https?:\/\/\S+)/)
 	if (!urlMatch) {
-		await ctx.reply("❌ Usage: /v <URL>\nExample: /v https://youtube.com/watch?v=...")
+		await ctx.reply("❌ Пример: /v <URL>\n/v https://youtube.com/watch?v=...")
 		return
 	}
 	const url = urlMatch[1]!
 
 	await processVideoRequest(ctx, url, queue, "v")
+
+	if (DELETE_TRIGGER_MESSAGES && ctx.message) {
+		await bot.api.deleteMessage(ctx.chat.id, ctx.message.message_id).catch(() => { })
+	}
 })
 
 /** NAV: COMMAND chatid

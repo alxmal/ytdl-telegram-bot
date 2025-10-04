@@ -1,36 +1,6 @@
 # telegram-ytdl
 
-#### A simple & fast YouTube download Telegram bot.
 
-[![Telegram Bot](https://img.shields.io/badge/TELEGRAM-BOT-%2330A3E6?style=for-the-badge&logo=telegram)](https://t.me/vYTDL_bot)
-![GitHub top language](https://img.shields.io/github/languages/top/vaaski/telegram-ytdl?style=for-the-badge)
-
-## Synopsis
-
-I was never satisfied with any YouTube downloader solution, because they either required chasing some website that was
-either bloated with ads, painfully slow, taken down the next day or all of those combined.
-Using [yt-dlp][yt-dlp] in the command line was my go-to,
-but doesn't really work great on mobile.
-
-**So I made this bot, to download from a single place across platforms, fast and effortless.**
-
-The bot then simply passes the URL to [yt-dlp][yt-dlp] with the `-f b` flag, which downloads the best quality
-format that contains both video and audio. This is meant to work together with a self-hosted
-Telegram bot API server, so that the upload limit for bots is increased from 50MB to 2GB.
-
-Because content sites change often (especially TikTok!), the bot uses the nightly build of yt-dlp to
-always get the latest resolvers. It will also auto-update yt-dlp every night as long as you don't
-set `YTDL_AUTOUPDATE` to `"false"`.
-
-The instance hosted by me is no longer available for public use, but you can simply host your own instance.
-
-## Hosting
-
-To host your own instance of this bot, you need to have a Telegram bot token, Telegram API Token
-and a server to run the bot on. You can create a Telegram bot with [BotFather][botfather] and purchase
-a cheap VPS with the hoster of your choice.
-
-I recommend [Hetzner][hetzner] and you can get 20€ in credits for free using my [referral link][hetzner].
 
 ### Installation
 
@@ -53,10 +23,23 @@ I recommend [Hetzner][hetzner] and you can get 20€ in credits for free using m
   | `OPENAI_API_KEY`        | Your OpenAI API key (optional, used for auto-translation)                                                                                      |
 
 - Run `docker compose up -d` in the folder you created.
-- You can put a cookies.txt file into the `./vaaski-telegram-ytdl` directory to be picked up automatically by the bot.
-- The `./vaaski-telegram-ytdl` directory will also house a `saved-translations.json` file if you've set up auto-translation.
 
-If you have any problems with hosting feel free to contact me or open an issue.
+## Commands
+
+- `/v <url>` (alias `/vid`): download and post the video in this chat (only in chats from `WHITELISTED_CHAT_IDS`; if `WHITELISTED_IDS` is set, only those users can run it).
+- Mention: `@botname <url>` — same as `/v`, in whitelisted chats.
+- `/chatid` — replies with the current chat id (admin `ADMIN_ID` only).
+
+In private chats: just send a URL and the bot will reply with video/audio.
+
+## Configuration
+
+- `WHITELISTED_CHAT_IDS`: comma-separated chat IDs where `/v` and mentions are allowed.
+- `WHITELISTED_IDS`: comma-separated user IDs; if empty, everyone is allowed.
+- `ALLOW_GROUPS`: set to `"true"` to enable group handlers.
+- `YTDL_AUTOUPDATE`: keep `youtube-dl` up-to-date (defaults to `"true"`).
+
+More details in `docs/usage.md`.
 
 [yt-dlp]: https://github.com/yt-dlp/yt-dlp
 [telegram-api-id]: https://core.telegram.org/api/obtaining_api_id

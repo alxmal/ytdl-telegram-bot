@@ -29,6 +29,8 @@ export const WHITELISTED_CHAT_IDS = getVariable("WHITELISTED_CHAT_IDS", "")
 	.split(",")
 	.map((id) => Number.parseInt(id))
 	.filter((id) => !Number.isNaN(id))
+export const DELETE_TRIGGER_MESSAGES =
+	getVariable("DELETE_TRIGGER_MESSAGES", "false") !== "false"
 
 export const OPENAI_API_KEY = getVariable("OPENAI_API_KEY", "")
 export const COBALT_INSTANCE_URL = getVariable("COBALT_INSTANCE_URL", "")
