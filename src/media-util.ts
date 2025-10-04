@@ -94,6 +94,7 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 					thumbnail: getThumbnail(info.thumbnails),
 					duration: info.duration,
 				})
+
 			}
 		} catch (error) {
 			return error instanceof Error

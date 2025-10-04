@@ -102,8 +102,8 @@ bot.on("message:text", async (ctx, next) => {
 
 	await processVideoRequest(ctx, href, queue, "mention")
 
-	if (DELETE_TRIGGER_MESSAGES && ctx.message) {
-		await bot.api.deleteMessage(ctx.chat.id, ctx.message.message_id).catch(() => { })
+	if (DELETE_TRIGGER_MESSAGES && ctx.chat?.type !== "private" && ctx.message) {
+		await bot.api.deleteMessage(ctx.chat.id, ctx.message.message_id).catch(() => { });
 	}
 })
 
@@ -127,8 +127,8 @@ bot.command("v", async (ctx) => {
 
 	await processVideoRequest(ctx, url, queue, "v")
 
-	if (DELETE_TRIGGER_MESSAGES && ctx.message) {
-		await bot.api.deleteMessage(ctx.chat.id, ctx.message.message_id).catch(() => { })
+	if (DELETE_TRIGGER_MESSAGES && ctx.chat?.type !== "private" && ctx.message) {
+		await bot.api.deleteMessage(ctx.chat.id, ctx.message.message_id).catch(() => { });
 	}
 })
 
