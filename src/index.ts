@@ -31,6 +31,17 @@ bot.use(async (ctx, next) => {
 	}
 })
 
+const seenUpdates = new Set<number>()
+bot.use(async (ctx, next) => {
+	const u = (ctx as any).update?.update_id as number | undefined
+	if (typeof u === "number") {
+		if (seenUpdates.has(u)) return
+		seenUpdates.add(u)
+		setTimeout(() => seenUpdates.delete(u), 5 * 60 * 1000).unref?.()
+	}
+	await next()
+})
+
 /** NAV: MIDDLEWARE whitelist-users
  * Разрешает сообщения только от `WHITELISTED_IDS` (если список не пуст).
  * Тихо игнорирует остальных.
@@ -82,8 +93,8 @@ bot.on("message:text").on("::url", async (ctx, next) => {
  */
 bot.on("message:text", async (ctx, next) => {
 	// Только whitelisted чаты
-	if (!WHITELISTED_CHAT_IDS.includes(ctx.chat?.id ?? 0)) return
-	if (WHITELISTED_IDS.length > 0 && (!ctx.from || !WHITELISTED_IDS.includes(ctx.from.id))) return
+	if (!WHITELISTED_CHAT_IDS.includes(ctx.chat?.id ?? 0)) return await next()
+	if (WHITELISTED_IDS.length > 0 && (!ctx.from || !WHITELISTED_IDS.includes(ctx.from.id))) return await next()
 
 
 	// Упоминание бота
@@ -91,6 +102,10 @@ bot.on("message:text", async (ctx, next) => {
 	if (!me) return await next()
 	const mentioned = ctx.entities("mention").some((m) => m.text === `@${me}`)
 	if (!mentioned) return await next()
+
+	// Избежать пересечения с /v: если есть команда, не обрабатывать как mention
+	const hasBotCommand = ctx.entities("bot_command").length > 0
+	if (hasBotCommand) return await next()
 
 	// URL в сообщении
 	const [urlEnt] = ctx.entities("url")
@@ -115,10 +130,10 @@ bot.on("message:text", async (ctx, next) => {
  * Группы: команда `/v <url>` в чатах из `WHITELISTED_CHAT_IDS`.
  * Если `WHITELISTED_IDS` задан, доступна только перечисленным юзерам.
  */
-bot.command("v", async (ctx) => {
+bot.command("v", async (ctx, next) => {
 	// Allow only in whitelisted chats
-	if (!WHITELISTED_CHAT_IDS.includes(ctx.chat.id)) return
-	if (WHITELISTED_IDS.length > 0 && (!ctx.from || !WHITELISTED_IDS.includes(ctx.from.id))) return
+	if (!WHITELISTED_CHAT_IDS.includes(ctx.chat.id)) return await next()
+	if (WHITELISTED_IDS.length > 0 && (!ctx.from || !WHITELISTED_IDS.includes(ctx.from.id))) return await next()
 
 	// Extract URL after the command
 	const messageText = ctx.message?.text || ""

@@ -104,8 +104,8 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 					? errorMessage(ctx.chat!, error.message)
 					: errorMessage(ctx.chat!, `Couldn't download ${href}`)
 			} finally {
-				resolve()
 				await deleteMessage(processingMessage)
+				resolve()
 			}
 		})
 	})
