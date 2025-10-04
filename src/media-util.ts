@@ -68,43 +68,46 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 	const processingMessage = await ctx.reply("🔄 Processing...", { disable_notification: true })
 	let ok = false;
 
-	await queue.add(async () => {
-		try {
-			const isYouTubeMusic = urlMatcher(href, "music.youtube.com")
-			const formatSelector = "best[height<=1080]/best"
-			const info = await getInfo(href, ["-f", formatSelector, "--no-playlist", ...(await cookieArgs())])
+	await new Promise<void>((resolve) => {
+		queue.add(async () => {
+			try {
+				const isYouTubeMusic = urlMatcher(href, "music.youtube.com")
+				const formatSelector = "best[height<=1080]/best"
+				const info = await getInfo(href, ["-f", formatSelector, "--no-playlist", ...(await cookieArgs())])
 
-			const suitableFormat =
-				info.formats?.find((f) => f.vcodec !== "none" && f.acodec !== "none" && typeof f.url === "string")
-				?? info.formats?.find((f) => typeof f.url === "string")
+				const suitableFormat =
+					info.formats?.find((f) => f.vcodec !== "none" && f.acodec !== "none" && typeof f.url === "string")
+					?? info.formats?.find((f) => typeof f.url === "string")
 
-			if (!suitableFormat?.url) throw new Error("No suitable format available")
+				if (!suitableFormat?.url) throw new Error("No suitable format available")
 
-			const title = removeHashtagsMentions(info.title)
+				const title = removeHashtagsMentions(info.title)
 
-			if (suitableFormat.vcodec !== "none" && !isYouTubeMusic) {
-				const video = new InputFile({ url: suitableFormat.url! }, title)
-				await ctx.replyWithVideo(video, { caption: title, supports_streaming: true, duration: info.duration })
-				ok = true;
-			} else if (suitableFormat.acodec !== "none") {
-				const stream = downloadFromInfo(info, "-", ["-x", "--audio-format", "mp3"])
-				const audio = new InputFile(stream.stdout)
-				await ctx.replyWithAudio(audio, {
-					caption: title,
-					performer: info.uploader,
-					title: info.title,
-					thumbnail: getThumbnail(info.thumbnails),
-					duration: info.duration,
-				})
-				ok = true;
+				if (suitableFormat.vcodec !== "none" && !isYouTubeMusic) {
+					const video = new InputFile({ url: suitableFormat.url! }, title)
+					await ctx.replyWithVideo(video, { caption: title, supports_streaming: true, duration: info.duration })
+					ok = true;
+				} else if (suitableFormat.acodec !== "none") {
+					const stream = downloadFromInfo(info, "-", ["-x", "--audio-format", "mp3"])
+					const audio = new InputFile(stream.stdout)
+					await ctx.replyWithAudio(audio, {
+						caption: title,
+						performer: info.uploader,
+						title: info.title,
+						thumbnail: getThumbnail(info.thumbnails),
+						duration: info.duration,
+					})
+					ok = true;
+				}
+			} catch (error) {
+				return error instanceof Error
+					? errorMessage(ctx.chat!, error.message)
+					: errorMessage(ctx.chat!, `Couldn't download ${href}`)
+			} finally {
+				await deleteMessage(processingMessage)
+				resolve()
 			}
-		} catch (error) {
-			return error instanceof Error
-				? errorMessage(ctx.chat!, error.message)
-				: errorMessage(ctx.chat!, `Couldn't download ${href}`)
-		} finally {
-			await deleteMessage(processingMessage)
-		}
+		})
 	})
 	return ok;
 }
