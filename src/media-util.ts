@@ -60,12 +60,13 @@ export const getThumbnail = (thumbnails?: Thumbnail[]) => {
  * @param queue очередь для сериализации задач
  * @param source источник вызова: "url" | "v" | "mention"
  */
-export async function processVideoRequest(ctx: Context, href: string, queue: Queue, source: "url" | "v" | "mention") {
+export async function processVideoRequest(ctx: Context, href: string, queue: Queue, source: "url" | "v" | "mention"): Promise<boolean> {
 	const userTag = `user=${ctx.from?.id}${ctx.from?.username ? ` @${ctx.from?.username}` : ""}`
 	const chatTag = `chat=${ctx.chat?.id} type=${ctx.chat?.type}${(ctx as any).chat?.title ? ` title="${(ctx as any).chat.title}"` : ""}`
 	console.log(`[${source}] ${chatTag} | ${userTag} | ${href}`)
 
 	const processingMessage = await ctx.reply("🔄 Processing...", { disable_notification: true })
+	let ok = false;
 
 	await queue.add(async () => {
 		try {
@@ -84,6 +85,7 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 			if (suitableFormat.vcodec !== "none" && !isYouTubeMusic) {
 				const video = new InputFile({ url: suitableFormat.url! }, title)
 				await ctx.replyWithVideo(video, { caption: title, supports_streaming: true, duration: info.duration })
+				ok = true;
 			} else if (suitableFormat.acodec !== "none") {
 				const stream = downloadFromInfo(info, "-", ["-x", "--audio-format", "mp3"])
 				const audio = new InputFile(stream.stdout)
@@ -94,7 +96,7 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 					thumbnail: getThumbnail(info.thumbnails),
 					duration: info.duration,
 				})
-
+				ok = true;
 			}
 		} catch (error) {
 			return error instanceof Error
@@ -104,4 +106,5 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 			await deleteMessage(processingMessage)
 		}
 	})
+	return ok;
 }
