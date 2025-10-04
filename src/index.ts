@@ -31,17 +31,6 @@ bot.use(async (ctx, next) => {
 	}
 })
 
-const seenUpdates = new Set<number>()
-bot.use(async (ctx, next) => {
-	const u = (ctx as any).update?.update_id as number | undefined
-	if (typeof u === "number") {
-		if (seenUpdates.has(u)) return
-		seenUpdates.add(u)
-		setTimeout(() => seenUpdates.delete(u), 5 * 60 * 1000).unref?.()
-	}
-	await next()
-})
-
 /** NAV: MIDDLEWARE whitelist-users
  * Разрешает сообщения только от `WHITELISTED_IDS` (если список не пуст).
  * Тихо игнорирует остальных.
@@ -109,21 +98,18 @@ bot.on("message:text", async (ctx, next) => {
 
 	// URL в сообщении
 	const [urlEnt] = ctx.entities("url")
-	const href = urlEnt?.text
-	if (!href) return await next()
+	const url = urlEnt?.text
+	if (!url) return await next()
 
-	const chatIdToDelete_mention = ctx.chat?.id
-	const messageIdToDelete_mention = ctx.message?.message_id
-	const ok = await processVideoRequest(ctx, href, queue, "mention")
-	if (
-		ok &&
-		DELETE_TRIGGER_MESSAGES &&
-		ctx.chat?.type !== "private" &&
-		chatIdToDelete_mention &&
-		messageIdToDelete_mention
-	) {
-		await bot.api.deleteMessage(chatIdToDelete_mention, messageIdToDelete_mention).catch(() => { })
-	}
+	const chatId = ctx.chat?.id
+	const msgId = ctx.message?.message_id
+	void (async () => {
+		const ok = await processVideoRequest(ctx, url, queue, "mention" /* или "v" */)
+		if (ok && DELETE_TRIGGER_MESSAGES && ctx.chat?.type !== "private" && chatId && msgId) {
+			await bot.api.deleteMessage(chatId, msgId).catch(() => { })
+		}
+	})()
+	return
 })
 
 /** NAV: COMMAND v
@@ -144,18 +130,15 @@ bot.command("v", async (ctx, next) => {
 	}
 	const url = urlMatch[1]!
 
-	const chatIdToDelete_v = ctx.chat?.id
-	const messageIdToDelete_v = ctx.message?.message_id
-	const ok = await processVideoRequest(ctx, url, queue, "v")
-	if (
-		ok &&
-		DELETE_TRIGGER_MESSAGES &&
-		ctx.chat?.type !== "private" &&
-		chatIdToDelete_v &&
-		messageIdToDelete_v
-	) {
-		await bot.api.deleteMessage(chatIdToDelete_v, messageIdToDelete_v).catch(() => { })
-	}
+	const chatId = ctx.chat?.id
+	const msgId = ctx.message?.message_id
+	void (async () => {
+		const ok = await processVideoRequest(ctx, url, queue, "mention" /* или "v" */)
+		if (ok && DELETE_TRIGGER_MESSAGES && ctx.chat?.type !== "private" && chatId && msgId) {
+			await bot.api.deleteMessage(chatId, msgId).catch(() => { })
+		}
+	})()
+	return
 })
 
 /** NAV: COMMAND chatid
