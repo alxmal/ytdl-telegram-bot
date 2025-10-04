@@ -95,6 +95,10 @@ bot.on("message:text", async (ctx, next) => {
 	const mentioned = ctx.entities("mention").some((m) => m.text === `@${me}`)
 	if (!mentioned) return await next()
 
+	// Избежать дубля: если это командное сообщение (/v ...), не обрабатывать как упоминание
+	const hasBotCommand = ctx.entities("bot_command").length > 0
+	if (hasBotCommand) return await next()
+
 	// URL в сообщении
 	const [urlEnt] = ctx.entities("url")
 	const href = urlEnt?.text
