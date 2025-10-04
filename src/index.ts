@@ -82,22 +82,15 @@ bot.on("message:text").on("::url", async (ctx, next) => {
  */
 bot.on("message:text", async (ctx, next) => {
 	// Только whitelisted чаты
-	if (!WHITELISTED_CHAT_IDS.includes(ctx.chat?.id ?? 0)) return await next()
+	if (!WHITELISTED_CHAT_IDS.includes(ctx.chat?.id ?? 0)) return
+	if (WHITELISTED_IDS.length > 0 && (!ctx.from || !WHITELISTED_IDS.includes(ctx.from.id))) return
 
-	// Проверка юзера как в /v (если список не пуст)
-	if (WHITELISTED_IDS.length > 0 && (!ctx.from || !WHITELISTED_IDS.includes(ctx.from.id))) {
-		return
-	}
 
 	// Упоминание бота
 	const me = bot.botInfo?.username
 	if (!me) return await next()
 	const mentioned = ctx.entities("mention").some((m) => m.text === `@${me}`)
 	if (!mentioned) return await next()
-
-	// Избежать дубля: если это командное сообщение (/v ...), не обрабатывать как упоминание
-	const hasBotCommand = ctx.entities("bot_command").length > 0
-	if (hasBotCommand) return await next()
 
 	// URL в сообщении
 	const [urlEnt] = ctx.entities("url")
