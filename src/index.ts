@@ -7,6 +7,7 @@ import {
 	WHITELISTED_CHAT_IDS,
 	DELETE_TRIGGER_MESSAGES,
 } from "./environment"
+import logger from "./logger"
 import { processVideoRequest } from "./media-util"
 import { Queue } from "./queue"
 import { bot } from "./setup"

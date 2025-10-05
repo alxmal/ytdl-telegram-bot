@@ -4,6 +4,7 @@ import { downloadFromInfo, getInfo } from './youtube-dl'
 import { deleteMessage, errorMessage } from './bot-util'
 import type { Queue } from "./queue"
 import { cookieArgs } from './environment'
+import logger from './logger'
 
 type Thumbnail = {
 	url: string
@@ -61,9 +62,15 @@ export const getThumbnail = (thumbnails?: Thumbnail[]) => {
  * @param source источник вызова: "url" | "v" | "mention"
  */
 export async function processVideoRequest(ctx: Context, href: string, queue: Queue, source: "url" | "v" | "mention"): Promise<boolean> {
-	const userTag = `user=${ctx.from?.id}${ctx.from?.username ? ` @${ctx.from?.username}` : ""}`
-	const chatTag = `chat=${ctx.chat?.id} type=${ctx.chat?.type}${(ctx as any).chat?.title ? ` title="${(ctx as any).chat.title}"` : ""}`
-	console.log(`[${source}] ${chatTag} | ${userTag} | ${href}`)
+	logger.info('Starting video processing', {
+		source,
+		chatId: ctx.chat?.id,
+		chatType: ctx.chat?.type,
+		chatTitle: (ctx as any).chat?.title,
+		userId: ctx.from?.id,
+		username: ctx.from?.username,
+		url: href
+	})
 
 	const processingMessage = await ctx.reply("🔄 Processing...", { disable_notification: true })
 	let ok = false;
@@ -74,6 +81,14 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 				const isYouTubeMusic = urlMatcher(href, "music.youtube.com")
 				const formatSelector = "best[height<=1080]/best"
 				const info = await getInfo(href, ["-f", formatSelector, "--no-playlist", ...(await cookieArgs())])
+
+				logger.debug('Video info retrieved', {
+					title: info.title,
+					duration: info.duration,
+					uploader: info.uploader,
+					formatsCount: info.formats?.length,
+					url: href
+				})
 
 				const suitableFormat =
 					info.formats?.find((f) => f.vcodec !== "none" && f.acodec !== "none" && typeof f.url === "string")
@@ -87,6 +102,14 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 					const video = new InputFile({ url: suitableFormat.url! }, title)
 					await ctx.replyWithVideo(video, { caption: title, supports_streaming: true, duration: info.duration })
 					ok = true;
+
+					logger.info('Video sent successfully', {
+						chatId: ctx.chat?.id,
+						userId: ctx.from?.id,
+						title: title,
+						duration: info.duration,
+						url: href
+					})
 				} else if (suitableFormat.acodec !== "none") {
 					const stream = downloadFromInfo(info, "-", ["-x", "--audio-format", "mp3"])
 					const audio = new InputFile(stream.stdout)
@@ -98,8 +121,25 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 						duration: info.duration,
 					})
 					ok = true;
+
+					logger.info('Audio sent successfully', {
+						chatId: ctx.chat?.id,
+						userId: ctx.from?.id,
+						title: title,
+						performer: info.uploader,
+						duration: info.duration,
+						url: href
+					})
 				}
 			} catch (error) {
+				logger.error('Video processing failed', {
+					chatId: ctx.chat?.id,
+					userId: ctx.from?.id,
+					url: href,
+					error: error instanceof Error ? error.message : 'Unknown error',
+					stack: error instanceof Error ? error.stack : undefined
+				})
+
 				return error instanceof Error
 					? errorMessage(ctx.chat!, error.message)
 					: errorMessage(ctx.chat!, `Couldn't download ${href}`)

@@ -32,6 +32,9 @@ export const WHITELISTED_CHAT_IDS = getVariable("WHITELISTED_CHAT_IDS", "")
 export const DELETE_TRIGGER_MESSAGES =
 	getVariable("DELETE_TRIGGER_MESSAGES", "false") !== "false"
 
+export const NODE_ENV = getVariable("NODE_ENV", "production")
+export const LOG_LEVEL = getVariable("LOG_LEVEL", "")
+
 export const OPENAI_API_KEY = getVariable("OPENAI_API_KEY", "")
 export const COBALT_INSTANCE_URL = getVariable("COBALT_INSTANCE_URL", "")
 

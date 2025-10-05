@@ -6,6 +6,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./telegram-ytdl-storage:/app/storage
+      - ./logs:/app/logs
     environment:
       # get your bot token from @BotFather
       TELEGRAM_BOT_TOKEN: ""
@@ -35,6 +36,16 @@ services:
       # provide your cobalt instance url (optional, can be left as-is for the default compose.yml)
       COBALT_INSTANCE_URL: "http://cobalt:9000"
 
+      # logging configuration
+      NODE_ENV: "production"
+      LOG_LEVEL: "info"
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=telegram-bot"
     depends_on:
       telegram-bot-api:
         condition: service_healthy

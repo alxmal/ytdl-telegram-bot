@@ -5,6 +5,7 @@ import { hydrateReply } from "@grammyjs/parse-mode"
 import express from "express"
 import { Bot, webhookCallback } from "grammy"
 import { ALLOW_GROUPS, API_ROOT, BOT_TOKEN, WEBHOOK_PORT, WEBHOOK_URL } from "./environment"
+import logger from "./logger"
 
 export const bot = new Bot<ParseModeFlavor<Context>>(BOT_TOKEN, {
 	client: { apiRoot: API_ROOT },
@@ -49,11 +50,14 @@ export const server = express()
 server.use(express.json())
 server.use(webhookCallback(bot, "express", { timeoutMilliseconds: 3000, onTimeout: (_req, _res) => { _res.sendStatus(200) } }))
 
-console.log(`Starting bot with root ${API_ROOT}...`)
+logger.info('Starting bot', { apiRoot: API_ROOT })
 server.listen(WEBHOOK_PORT, async () => {
 	await bot.api.setWebhook(WEBHOOK_URL)
-	console.log(`Webhook set to ${WEBHOOK_URL}`)
+	logger.info('Webhook configured', { webhookUrl: WEBHOOK_URL })
 
 	const me = await bot.api.getMe()
-	console.log(`Bot started as @${me.username} on :${WEBHOOK_PORT}`)
+	logger.info('Bot started successfully', {
+		username: me.username,
+		port: WEBHOOK_PORT
+	})
 })

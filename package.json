@@ -11,8 +11,8 @@
 		"check": "pnpm format && pnpm lint",
 		"typecheck": "tsc --noEmit",
 		"test": "vitest",
-    "test:watch": "vitest --watch",
-    "test:cov": "vitest run --coverage"
+		"test:watch": "vitest --watch",
+		"test:cov": "vitest run --coverage"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
@@ -26,9 +26,11 @@
 	},
 	"dependencies": {
 		"@grammyjs/parse-mode": "^1.11.1",
+		"@types/winston": "^2.4.4",
 		"croner": "^9.0.0",
 		"express": "^4.21.2",
 		"grammy": "^1.35.0",
-		"openai": "^4.82.0"
+		"openai": "^4.82.0",
+		"winston": "^3.18.3"
 	}
 }
