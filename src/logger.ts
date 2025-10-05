@@ -26,9 +26,30 @@ winston.addColors(colors)
 const consoleFormat = winston.format.combine(
 	winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss:ms' }), // Время
 	winston.format.colorize({ all: true }), // Цвета
-	winston.format.printf(
-		(info) => `${info.timestamp} ${info.level}: ${info.message}`
-	)
+	winston.format.printf((info) => {
+		// Основное сообщение
+		let log = `${info.timestamp} ${info.level}: ${info.message}`
+
+		// Добавляем детали если они есть
+		const details = []
+		if (info.source) details.push(`source=${info.source}`)
+		if (info.chatId) details.push(`chat=${info.chatId}`)
+		if (info.chatType) details.push(`type=${info.chatType}`)
+		if (info.chatTitle) details.push(`title="${info.chatTitle}"`)
+		if (info.userId) details.push(`user=${info.userId}`)
+		if (info.username) details.push(`@${info.username}`)
+		if (info.url) details.push(`url=${info.url}`)
+		if (info.title) details.push(`title="${info.title}"`)
+		if (info.duration) details.push(`duration=${info.duration}s`)
+		if (info.uploader) details.push(`uploader="${info.uploader}"`)
+		if (info.error) details.push(`error="${info.error}"`)
+
+		if (details.length > 0) {
+			log += ` | ${details.join(' ')}`
+		}
+
+		return log
+	})
 )
 
 // Создаём формат для файлов (JSON, структурированный)
