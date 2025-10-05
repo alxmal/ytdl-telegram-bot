@@ -72,7 +72,7 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 		url: href
 	})
 
-	const processingMessage = await ctx.reply("🔄 Processing...", { disable_notification: true })
+	const processingMessage = await ctx.reply("🔄 Загружаю...", { disable_notification: true })
 	let ok = false;
 
 	await new Promise<void>((resolve) => {
