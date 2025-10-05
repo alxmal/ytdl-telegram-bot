@@ -17,20 +17,6 @@ import { Updater } from "./updater"
 const queue = new Queue()
 const updater = new Updater()
 
-/** NAV: MIDDLEWARE allow-private-and-groups
- * Пропускает личку всегда; группы — если включён `ALLOW_GROUPS`.
- */
-bot.use(async (ctx, next) => {
-	if (ctx.chat?.type === "private") {
-		return await next()
-	}
-
-	const isGroup = ["supergroup", "group"].includes(ctx.chat?.type ?? "")
-	if (ALLOW_GROUPS && isGroup) {
-		return await next()
-	}
-})
-
 /** NAV: MIDDLEWARE whitelist-users
  * Разрешает сообщения только от `WHITELISTED_IDS` (если список не пуст).
  * Тихо игнорирует остальных.
@@ -74,7 +60,8 @@ bot.on("message:text").on("::url", async (ctx, next) => {
 			})
 	}
 
-	await processVideoRequest(ctx, href, queue, "url")
+	void await processVideoRequest(ctx, href, queue, "url")
+	return
 })
 
 /** NAV: HANDLER mention-with-url
@@ -99,10 +86,13 @@ bot.on("message:text", async (ctx, next) => {
 	const chatId = ctx.chat?.id
 	const msgId = ctx.message?.message_id
 
-	const ok = await processVideoRequest(ctx, url, queue, "mention")
-	if (ok && DELETE_TRIGGER_MESSAGES && ctx.chat?.type !== "private") {
-		await bot.api.deleteMessage(chatId, msgId).catch(() => { })
-	}
+	void (async () => {
+		const ok = await processVideoRequest(ctx, url, queue, "mention")
+		if (ok && DELETE_TRIGGER_MESSAGES && ctx.chat?.type !== "private" && chatId && msgId) {
+			await bot.api.deleteMessage(chatId, msgId).catch(() => { })
+		}
+	})()
+	return
 })
 
 /** NAV: COMMAND v
@@ -125,10 +115,14 @@ bot.command("v", async (ctx, next) => {
 
 	const chatId = ctx.chat?.id
 	const msgId = ctx.message?.message_id
-	const ok = await processVideoRequest(ctx, url, queue, "v")
-	if (ok && DELETE_TRIGGER_MESSAGES && ctx.chat?.type !== "private" && chatId && msgId) {
-		await bot.api.deleteMessage(chatId, msgId).catch(() => { })
-	}
+
+	void (async () => {
+		const ok = await processVideoRequest(ctx, url, queue, "v")
+		if (ok && DELETE_TRIGGER_MESSAGES && ctx.chat?.type !== "private" && chatId && msgId) {
+			await bot.api.deleteMessage(chatId, msgId).catch(() => { })
+		}
+	})()
+	return
 })
 
 /** NAV: COMMAND chatid

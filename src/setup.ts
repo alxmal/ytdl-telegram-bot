@@ -4,7 +4,7 @@ import type { Context } from "grammy"
 import { hydrateReply } from "@grammyjs/parse-mode"
 import express from "express"
 import { Bot, webhookCallback } from "grammy"
-import { API_ROOT, BOT_TOKEN, WEBHOOK_PORT, WEBHOOK_URL } from "./environment"
+import { ALLOW_GROUPS, API_ROOT, BOT_TOKEN, WEBHOOK_PORT, WEBHOOK_URL } from "./environment"
 
 export const bot = new Bot<ParseModeFlavor<Context>>(BOT_TOKEN, {
 	client: { apiRoot: API_ROOT },
@@ -28,12 +28,26 @@ await bot.api.setMyCommands(
 //   { scope: { type: "chat", chat_id: -1001234567890 } },
 // )
 
+/** NAV: MIDDLEWARE allow-private-and-groups
+ * Пропускает личку всегда; группы — если включён `ALLOW_GROUPS`.
+ */
+bot.use(async (ctx, next) => {
+	if (ctx.chat?.type === "private") {
+		return await next()
+	}
+
+	const isGroup = ["supergroup", "group"].includes(ctx.chat?.type ?? "")
+	if (ALLOW_GROUPS && isGroup) {
+		return await next()
+	}
+})
+
 bot.use(hydrateReply)
 
 export const server = express()
 
 server.use(express.json())
-server.use(webhookCallback(bot, "express"))
+server.use(webhookCallback(bot, "express", { timeoutMilliseconds: 3000, onTimeout: (_req, _res) => { _res.sendStatus(200) } }))
 
 console.log(`Starting bot with root ${API_ROOT}...`)
 server.listen(WEBHOOK_PORT, async () => {
