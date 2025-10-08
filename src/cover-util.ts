@@ -199,10 +199,26 @@ export async function coverConversation(
 			audioPath
 		})
 
+		// Используем getFileUrl из Grammy (он сам формирует правильный URL)
 		const fileUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${file.file_path}`
+		logger.debug('Fetching file from Telegram', {
+			userId,
+			fileUrl: fileUrl.replace(BOT_TOKEN, '***TOKEN***'), // Скрываем токен в логах
+			filePath: file.file_path,
+			hasToken: !!BOT_TOKEN,
+			tokenLength: BOT_TOKEN.length
+		})
+
 		const response = await fetch(fileUrl)
 
 		if (!response.ok) {
+			logger.error('Failed to fetch file from Telegram', {
+				userId,
+				status: response.status,
+				statusText: response.statusText,
+				filePath: file.file_path,
+				url: fileUrl.substring(0, 50) + '...' // первые 50 символов URL
+			})
 			throw new Error(`Failed to download audio: ${response.status} ${response.statusText}`)
 		}
 
@@ -278,8 +294,32 @@ export async function coverConversation(
 		const file = await ctx.api.getFile(photo.file_id)
 		const imagePath = join('/tmp', `image_${userId}_${Date.now()}.png`)
 
+		logger.debug('Downloading image file', {
+			userId,
+			fileId: photo.file_id,
+			filePath: file.file_path,
+			imagePath
+		})
+
 		const fileUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${file.file_path}`
+		logger.debug('Fetching image from Telegram', {
+			userId,
+			fileUrl: fileUrl.replace(BOT_TOKEN, '***TOKEN***'),
+			filePath: file.file_path
+		})
+
 		const response = await fetch(fileUrl)
+
+		if (!response.ok) {
+			logger.error('Failed to fetch image from Telegram', {
+				userId,
+				status: response.status,
+				statusText: response.statusText,
+				filePath: file.file_path
+			})
+			throw new Error(`Failed to download image: ${response.status} ${response.statusText}`)
+		}
+
 		const buffer = await response.arrayBuffer()
 		await fs.writeFile(imagePath, Buffer.from(buffer))
 
