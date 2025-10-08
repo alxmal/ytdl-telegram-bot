@@ -100,7 +100,34 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 				const title = removeHashtagsMentions(info.title)
 
 				if (suitableFormat.vcodec !== "none" && !isYouTubeMusic) {
-					const video = new InputFile({ url: suitableFormat.url! }, title)
+					// Функция обновления прогресса для видео
+					let lastUpdateTime = 0
+					const updateProgress = (progressOutput: string) => {
+						const now = Date.now()
+
+						// Логируем вывод для отладки
+						logger.debug('youtube-dl video output', {
+							output: progressOutput.substring(0, 200)
+						})
+
+						// Обновляем раз в 2 секунды
+						if (now - lastUpdateTime > 2000) {
+							lastUpdateTime = now
+
+							const progress = parseYoutubeDLProgress(progressOutput)
+							if (progress !== null && ctx.chat?.id) {
+								logger.debug('Updating video download progress', { progress })
+								ctx.api.editMessageText(
+									ctx.chat.id,
+									processingMessage.message_id,
+									`⬇️ Скачиваю видео\n${createProgressBar(progress)} ${progress}%`
+								).catch(() => { })
+							}
+						}
+					}
+
+					const stream = downloadFromInfo(info, "-", [], updateProgress)
+					const video = new InputFile(stream.stdout, title)
 					await ctx.replyWithVideo(video, { caption: title, supports_streaming: true, duration: info.duration })
 					ok = true;
 
