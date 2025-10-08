@@ -441,13 +441,23 @@ export async function coverConversation(
 		// 	return '█'.repeat(filled) + '░'.repeat(empty)
 		// }
 
-		// Обновление прогресса
+		// Обновление прогресса с троттлингом
+		let lastUpdateTime = 0
 		const updateProgress = async (progress: number) => {
-			await ctx.api.editMessageText(
-				chatId!,
-				processingVideoMsg.message_id,
-				`🎬 Создаю видео\n${createProgressBar(progress)} ${progress}%`
-			).catch(() => { })
+			const now = Date.now()
+
+			// Обновляем раз в 2 секунды или при завершении (100%)
+			if (now - lastUpdateTime > 10000 || progress === 100) {
+				lastUpdateTime = now
+
+				if (chatId) {
+					await ctx.api.editMessageText(
+						chatId,
+						processingVideoMsg.message_id,
+						`🎬 Создаю видео\n${createProgressBar(progress)} ${progress}%`
+					).catch(() => { })
+				}
+			}
 		}
 
 		const outputPath = join('/tmp', `video_${userId}_${Date.now()}.mp4`)

@@ -117,12 +117,18 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 					const updateProgress = (progressOutput: string) => {
 						const now = Date.now()
 
+						// Логируем вывод для отладки
+						logger.debug('youtube-dl output', {
+							output: progressOutput.substring(0, 200)  // первые 200 символов
+						})
+
 						// Обновляем раз в 2 секунды
 						if (now - lastUpdateTime > 2000) {
 							lastUpdateTime = now
 
 							const progress = parseYoutubeDLProgress(progressOutput)
 							if (progress !== null && ctx.chat?.id) {
+								logger.debug('Updating download progress', { progress })
 								ctx.api.editMessageText(
 									ctx.chat.id,
 									processingMessage.message_id,
