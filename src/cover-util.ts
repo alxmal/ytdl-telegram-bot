@@ -184,7 +184,7 @@ export async function coverConversation(
 	// Обработка аудио
 	const processingAudioMsg = await ctx.reply('⏳ Обрабатываю аудио...')
 
-	let audioPath: string
+	let audioPath: string | undefined
 	let duration: number
 
 	try {
@@ -207,40 +207,69 @@ export async function coverConversation(
 			fileSize: file.file_size
 		})
 
-		// Скачиваем файл напрямую используя file_path
+		// Скачиваем файл
 		if (!file.file_path) {
 			throw new Error('File path is empty from Telegram API')
 		}
 
-		// Используем локальный API ROOT если настроен, иначе стандартный Telegram API
-		const fileUrl = `${API_ROOT}/file/bot${BOT_TOKEN}/${file.file_path}`
-		logger.debug('Downloading from URL', {
-			userId,
-			apiRoot: API_ROOT,
-			filePath: file.file_path,
-			urlPreview: fileUrl.substring(0, 60) + '...'
-		})
+		// Проверяем, это локальный путь или URL path
+		const isLocalPath = file.file_path.startsWith('/var/lib/telegram-bot-api')
 
-		const response = await fetch(fileUrl)
-
-		if (!response.ok) {
-			logger.error('Failed to download file', {
+		if (isLocalPath) {
+			// Локальный API возвращает абсолютный путь - читаем файл напрямую
+			logger.debug('Reading file from local path', {
 				userId,
-				status: response.status,
-				statusText: response.statusText,
 				filePath: file.file_path,
 				fileSize: file.file_size
 			})
-			throw new Error(`Failed to download audio: ${response.status} ${response.statusText}`)
+
+			try {
+				await fs.copyFile(file.file_path, audioPath)
+				const stats = await fs.stat(audioPath)
+				logger.debug('File copied from local storage', {
+					userId,
+					sourceSize: file.file_size,
+					copiedSize: stats.size
+				})
+			} catch (err) {
+				logger.error('Failed to copy file from local storage', {
+					userId,
+					filePath: file.file_path,
+					error: err instanceof Error ? err.message : 'Unknown'
+				})
+				throw new Error(`Failed to copy audio from local storage: ${err}`)
+			}
+		} else {
+			// Стандартный API - скачиваем через HTTP
+			const fileUrl = `${API_ROOT}/file/bot${BOT_TOKEN}/${file.file_path}`
+			logger.debug('Downloading from URL', {
+				userId,
+				apiRoot: API_ROOT,
+				filePath: file.file_path,
+				urlPreview: fileUrl.substring(0, 60) + '...'
+			})
+
+			const response = await fetch(fileUrl)
+
+			if (!response.ok) {
+				logger.error('Failed to download file', {
+					userId,
+					status: response.status,
+					statusText: response.statusText,
+					filePath: file.file_path,
+					fileSize: file.file_size
+				})
+				throw new Error(`Failed to download audio: ${response.status} ${response.statusText}`)
+			}
+
+			const buffer = await response.arrayBuffer()
+			logger.debug('File buffer received', {
+				userId,
+				bufferSize: buffer.byteLength
+			})
+
+			await fs.writeFile(audioPath, Buffer.from(buffer))
 		}
-
-		const buffer = await response.arrayBuffer()
-		logger.debug('File buffer received', {
-			userId,
-			bufferSize: buffer.byteLength
-		})
-
-		await fs.writeFile(audioPath, Buffer.from(buffer))
 
 		// Проверяем что файл создался
 		const stats = await fs.stat(audioPath)
@@ -272,6 +301,13 @@ export async function coverConversation(
 		})
 	} catch (error) {
 		await ctx.reply('❌ Ошибка при обработке аудио')
+
+		// Очистка аудио файла если он был создан
+		if (audioPath) {
+			await fs.unlink(audioPath).catch(() => { })
+			logger.debug('Audio file cleaned up after error', { audioPath })
+		}
+
 		logger.error('Audio processing failed in cover conversation', {
 			userId,
 			error: error instanceof Error ? error.message : 'Unknown'
@@ -318,29 +354,58 @@ export async function coverConversation(
 			imagePath
 		})
 
-		// Используем локальный API ROOT
-		const fileUrl = `${API_ROOT}/file/bot${BOT_TOKEN}/${file.file_path}`
-		logger.debug('Fetching image from Telegram', {
-			userId,
-			apiRoot: API_ROOT,
-			filePath: file.file_path,
-			urlPreview: fileUrl.substring(0, 60) + '...'
-		})
+		// Проверяем, это локальный путь или URL path
+		const isLocalPath = file.file_path?.startsWith('/var/lib/telegram-bot-api')
 
-		const response = await fetch(fileUrl)
-
-		if (!response.ok) {
-			logger.error('Failed to fetch image from Telegram', {
+		if (isLocalPath) {
+			// Локальный API - копируем файл напрямую
+			logger.debug('Reading image from local path', {
 				userId,
-				status: response.status,
-				statusText: response.statusText,
-				filePath: file.file_path
+				filePath: file.file_path,
+				fileSize: file.file_size
 			})
-			throw new Error(`Failed to download image: ${response.status} ${response.statusText}`)
-		}
 
-		const buffer = await response.arrayBuffer()
-		await fs.writeFile(imagePath, Buffer.from(buffer))
+			try {
+				await fs.copyFile(file.file_path!, imagePath)
+				const stats = await fs.stat(imagePath)
+				logger.debug('Image copied from local storage', {
+					userId,
+					sourceSize: file.file_size,
+					copiedSize: stats.size
+				})
+			} catch (err) {
+				logger.error('Failed to copy image from local storage', {
+					userId,
+					filePath: file.file_path,
+					error: err instanceof Error ? err.message : 'Unknown'
+				})
+				throw new Error(`Failed to copy image from local storage: ${err}`)
+			}
+		} else {
+			// Стандартный API - скачиваем через HTTP
+			const fileUrl = `${API_ROOT}/file/bot${BOT_TOKEN}/${file.file_path}`
+			logger.debug('Fetching image from Telegram', {
+				userId,
+				apiRoot: API_ROOT,
+				filePath: file.file_path,
+				urlPreview: fileUrl.substring(0, 60) + '...'
+			})
+
+			const response = await fetch(fileUrl)
+
+			if (!response.ok) {
+				logger.error('Failed to fetch image from Telegram', {
+					userId,
+					status: response.status,
+					statusText: response.statusText,
+					filePath: file.file_path
+				})
+				throw new Error(`Failed to download image: ${response.status} ${response.statusText}`)
+			}
+
+			const buffer = await response.arrayBuffer()
+			await fs.writeFile(imagePath, Buffer.from(buffer))
+		}
 
 		// Создаём видео с вращающейся обложкой
 		const outputPath = join('/tmp', `video_${userId}_${Date.now()}.mp4`)
@@ -354,27 +419,53 @@ export async function coverConversation(
 			duration: Math.round(duration)
 		})
 
+		// Удаляем сообщение "Создаю музыкальное видео..."
+		await ctx.api.deleteMessage(chatId!, processingVideoMsg.message_id).catch(() => { })
+
 		// Очистка временных файлов
-		await ctx.api.deleteMessage(chatId!, processingVideoMsg.message_id)
-		await fs.unlink(audioPath).catch(() => { })
-		await fs.unlink(imagePath).catch(() => { })
-		await fs.unlink(outputPath).catch(() => { })
+		logger.debug('Cleaning up temporary files', {
+			userId,
+			audioPath,
+			imagePath,
+			outputPath
+		})
+
+		await Promise.all([
+			fs.unlink(audioPath).catch((err) => {
+				logger.warn('Failed to delete audio file', { audioPath, error: err.message })
+			}),
+			fs.unlink(imagePath).catch((err) => {
+				logger.warn('Failed to delete image file', { imagePath, error: err.message })
+			}),
+			fs.unlink(outputPath).catch((err) => {
+				logger.warn('Failed to delete output video', { outputPath, error: err.message })
+			})
+		])
 
 		logger.info('Cover video created successfully', {
 			userId,
 			duration,
-			outputPath
+			filesCleanedUp: true
 		})
 	} catch (error) {
 		await ctx.reply('❌ Ошибка при создании видео')
 
 		// Очистка при ошибке
-		await fs.unlink(audioPath).catch(() => { })
+		logger.debug('Cleaning up files after error', { userId, audioPath })
+
+		// Удаляем аудио файл (он точно есть)
+		await fs.unlink(audioPath).catch((err) => {
+			logger.warn('Failed to delete audio file after error', {
+				audioPath,
+				error: err.message
+			})
+		})
 
 		logger.error('Cover video creation failed', {
 			userId,
 			error: error instanceof Error ? error.message : 'Unknown',
-			stack: error instanceof Error ? error.stack : undefined
+			stack: error instanceof Error ? error.stack : undefined,
+			audioPathCleaned: true
 		})
 	}
 }

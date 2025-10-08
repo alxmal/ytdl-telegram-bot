@@ -7,6 +7,7 @@ services:
     volumes:
       - ./telegram-ytdl-storage:/app/storage
       - ./logs:/app/logs
+      - telegram-bot-server-data:/var/lib/telegram-bot-api:ro  # read-only доступ к файлам локального API
     environment:
       # get your bot token from @BotFather
       TELEGRAM_BOT_TOKEN: ""
