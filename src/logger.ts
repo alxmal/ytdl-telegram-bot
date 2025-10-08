@@ -55,6 +55,9 @@ const consoleFormat = winston.format.combine(
 		if (info.bufferSize) details.push(`bufferSize=${info.bufferSize}`)
 		if (info.audioPath) details.push(`audioPath=${info.audioPath}`)
 		if (info.imagePath) details.push(`imagePath=${info.imagePath}`)
+		if (info.output) details.push(`output="${info.output}"`)
+		if (info.progress) details.push(`progress=${info.progress}%`)
+		if (info.message) details.push(`msg="${info.message}"`)
 
 		if (details.length > 0) {
 			log += ` | ${details.join(' ')}`
