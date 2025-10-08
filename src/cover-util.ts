@@ -9,10 +9,13 @@ import logger from "./logger"
 type CoverContext = Context
 
 /** NAV: UTIL getAudioDuration
- * Получает длительность аудио через FFprobe
+ * Получает длительность аудио через FFprobe или FFmpeg
  */
 async function getAudioDuration(audioPath: string): Promise<number> {
 	return new Promise((resolve, reject) => {
+		logger.debug('Getting audio duration', { audioPath })
+
+		// Сначала пробуем ffprobe
 		const ffprobe = spawn('ffprobe', [
 			'-v', 'error',
 			'-show_entries', 'format=duration',
@@ -21,14 +24,71 @@ async function getAudioDuration(audioPath: string): Promise<number> {
 		])
 
 		let output = ''
+		let errorOutput = ''
+
 		ffprobe.stdout.on('data', (data) => { output += data })
+		ffprobe.stderr.on('data', (data) => { errorOutput += data })
+
 		ffprobe.on('close', (code) => {
 			if (code === 0) {
-				resolve(parseFloat(output.trim()))
+				const duration = parseFloat(output.trim())
+				logger.debug('Audio duration retrieved via ffprobe', { audioPath, duration })
+				resolve(duration)
 			} else {
-				reject(new Error('Failed to get audio duration'))
+				logger.warn('FFprobe failed, trying ffmpeg', {
+					audioPath,
+					exitCode: code,
+					stderr: errorOutput,
+					stdout: output
+				})
+				// Fallback: используем ffmpeg для получения длительности
+				tryWithFFmpeg()
 			}
 		})
+
+		ffprobe.on('error', (err) => {
+			logger.warn('FFprobe not available, trying ffmpeg', {
+				audioPath,
+				error: err.message
+			})
+			// Fallback: используем ffmpeg
+			tryWithFFmpeg()
+		})
+
+		// Fallback метод через ffmpeg
+		function tryWithFFmpeg() {
+			const ffmpeg = spawn('ffmpeg', ['-i', audioPath])
+			let ffmpegOutput = ''
+
+			ffmpeg.stderr.on('data', (data) => { ffmpegOutput += data })
+
+			ffmpeg.on('close', () => {
+				// Ищем Duration: HH:MM:SS.mm в выводе ffmpeg
+				const match = ffmpegOutput.match(/Duration: (\d{2}):(\d{2}):(\d{2}\.\d{2})/)
+				if (match) {
+					const hours = parseInt(match[1]!)
+					const minutes = parseInt(match[2]!)
+					const seconds = parseFloat(match[3]!)
+					const duration = hours * 3600 + minutes * 60 + seconds
+					logger.debug('Audio duration retrieved via ffmpeg', { audioPath, duration })
+					resolve(duration)
+				} else {
+					logger.error('Failed to parse duration from ffmpeg', {
+						audioPath,
+						output: ffmpegOutput
+					})
+					reject(new Error('Failed to get audio duration from both ffprobe and ffmpeg'))
+				}
+			})
+
+			ffmpeg.on('error', (err) => {
+				logger.error('FFmpeg also failed', {
+					audioPath,
+					error: err.message
+				})
+				reject(new Error(`Both ffprobe and ffmpeg failed: ${err.message}`))
+			})
+		}
 	})
 }
 
@@ -102,16 +162,16 @@ export async function coverConversation(
 
 	// Ждём аудио или документ
 	const audioCtx = await conversation.waitFor([':audio', ':document'])
-	
-	const audio = audioCtx.message?.audio || 
-		(audioCtx.message?.document?.mime_type?.includes('audio/mpeg') 
-			? audioCtx.message.document 
+
+	const audio = audioCtx.message?.audio ||
+		(audioCtx.message?.document?.mime_type?.includes('audio/mpeg')
+			? audioCtx.message.document
 			: null)
 
 	// Валидация MP3
-	if (!audio || 
-			(!audio.mime_type?.includes('audio/mpeg') && 
-			 !audio.file_name?.endsWith('.mp3'))) {
+	if (!audio ||
+		(!audio.mime_type?.includes('audio/mpeg') &&
+			!audio.file_name?.endsWith('.mp3'))) {
 		await ctx.reply('❌ Нужен файл в формате MP3')
 		logger.warn('Invalid audio format in cover conversation', {
 			userId,
@@ -122,25 +182,54 @@ export async function coverConversation(
 
 	// Обработка аудио
 	const processingAudioMsg = await ctx.reply('⏳ Обрабатываю аудио...')
-	
+
 	let audioPath: string
 	let duration: number
-	
+
 	try {
 		// Скачиваем аудио
 		const file = await ctx.api.getFile(audio.file_id)
 		audioPath = join('/tmp', `audio_${userId}_${Date.now()}.mp3`)
-		
+
+		logger.debug('Downloading audio file', {
+			userId,
+			fileId: audio.file_id,
+			filePath: file.file_path,
+			audioPath
+		})
+
 		const fileUrl = `https://api.telegram.org/file/bot${ctx.api.token}/${file.file_path}`
 		const response = await fetch(fileUrl)
+
+		if (!response.ok) {
+			throw new Error(`Failed to download audio: ${response.status} ${response.statusText}`)
+		}
+
 		const buffer = await response.arrayBuffer()
 		await fs.writeFile(audioPath, Buffer.from(buffer))
+
+		// Проверяем что файл создался
+		const stats = await fs.stat(audioPath)
+		logger.debug('Audio file downloaded', {
+			userId,
+			audioPath,
+			fileSize: stats.size,
+			fileMode: stats.mode.toString(8) // права доступа в восьмеричном виде
+		})
+
+		// Проверяем что файл читаемый
+		try {
+			await fs.access(audioPath, fs.constants.R_OK)
+			logger.debug('Audio file is readable', { audioPath })
+		} catch (err) {
+			throw new Error(`Audio file is not readable: ${err}`)
+		}
 
 		// Получаем длительность
 		duration = await getAudioDuration(audioPath)
 
 		await ctx.api.deleteMessage(chatId!, processingAudioMsg.message_id)
-		
+
 		logger.info('Audio processed in cover conversation', {
 			userId,
 			audioPath,
@@ -165,7 +254,7 @@ export async function coverConversation(
 
 	// Ждём фото или документ
 	const imageCtx = await conversation.waitFor([':photo', ':document'])
-	
+
 	const photo = imageCtx.message?.photo?.[imageCtx.message.photo.length - 1] ||
 		(imageCtx.message?.document?.mime_type?.includes('image/')
 			? imageCtx.message.document
@@ -176,18 +265,18 @@ export async function coverConversation(
 		await ctx.reply('❌ Нужно изображение')
 		logger.warn('No image in cover conversation', { userId })
 		// Очистка аудио файла
-		await fs.unlink(audioPath).catch(() => {})
+		await fs.unlink(audioPath).catch(() => { })
 		return
 	}
 
 	// Обработка изображения и создание видео
 	const processingVideoMsg = await ctx.reply('🎬 Создаю музыкальное видео...')
-	
+
 	try {
 		// Скачиваем изображение
 		const file = await ctx.api.getFile(photo.file_id)
 		const imagePath = join('/tmp', `image_${userId}_${Date.now()}.png`)
-		
+
 		const fileUrl = `https://api.telegram.org/file/bot${ctx.api.token}/${file.file_path}`
 		const response = await fetch(fileUrl)
 		const buffer = await response.arrayBuffer()
@@ -207,9 +296,9 @@ export async function coverConversation(
 
 		// Очистка временных файлов
 		await ctx.api.deleteMessage(chatId!, processingVideoMsg.message_id)
-		await fs.unlink(audioPath).catch(() => {})
-		await fs.unlink(imagePath).catch(() => {})
-		await fs.unlink(outputPath).catch(() => {})
+		await fs.unlink(audioPath).catch(() => { })
+		await fs.unlink(imagePath).catch(() => { })
+		await fs.unlink(outputPath).catch(() => { })
 
 		logger.info('Cover video created successfully', {
 			userId,
@@ -218,9 +307,9 @@ export async function coverConversation(
 		})
 	} catch (error) {
 		await ctx.reply('❌ Ошибка при создании видео')
-		
+
 		// Очистка при ошибке
-		await fs.unlink(audioPath).catch(() => {})
+		await fs.unlink(audioPath).catch(() => { })
 
 		logger.error('Cover video creation failed', {
 			userId,
