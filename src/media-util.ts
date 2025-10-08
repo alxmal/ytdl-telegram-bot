@@ -73,7 +73,7 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 		url: href
 	})
 
-	const processingMessage = await ctx.reply("🔄 Загружаю...", { disable_notification: true })
+	const processingMessage = await ctx.reply("🔄 Скачиваю...", { disable_notification: true })
 	let ok = false;
 
 	await new Promise<void>((resolve) => {
@@ -110,18 +110,27 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 							output: progressOutput.substring(0, 200)
 						})
 
-						// Обновляем раз в 2 секунды
-						if (now - lastUpdateTime > 2000) {
+						// Обновляем раз в 1 секунду (видео скачивается быстро)
+						if (now - lastUpdateTime > 1000) {
 							lastUpdateTime = now
 
 							const progress = parseYoutubeDLProgress(progressOutput)
+
+							logger.debug('Parsed progress from youtube-dl video', {
+								progress,
+								hasProgress: progress !== null,
+								hasChatId: !!ctx.chat?.id
+							})
+
 							if (progress !== null && ctx.chat?.id) {
 								logger.debug('Updating video download progress', { progress })
 								ctx.api.editMessageText(
 									ctx.chat.id,
 									processingMessage.message_id,
-									`⬇️ Скачиваю видео\n${createProgressBar(progress)} ${progress}%`
-								).catch(() => { })
+									`⬇️ Загружаю \n${createProgressBar(progress)} ${progress}%`
+								).catch((err) => {
+									logger.warn('Failed to update progress message', { error: err.message })
+								})
 							}
 						}
 					}
@@ -145,22 +154,31 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 						const now = Date.now()
 
 						// Логируем вывод для отладки
-						logger.debug('youtube-dl output', {
-							output: progressOutput.substring(0, 200)  // первые 200 символов
+						logger.debug('youtube-dl audio output', {
+							output: progressOutput.substring(0, 200)
 						})
 
-						// Обновляем раз в 2 секунды
-						if (now - lastUpdateTime > 2000) {
+						// Обновляем раз в 1 секунду
+						if (now - lastUpdateTime > 1000) {
 							lastUpdateTime = now
 
 							const progress = parseYoutubeDLProgress(progressOutput)
+
+							logger.debug('Parsed progress from youtube-dl audio', {
+								progress,
+								hasProgress: progress !== null,
+								hasChatId: !!ctx.chat?.id
+							})
+
 							if (progress !== null && ctx.chat?.id) {
-								logger.debug('Updating download progress', { progress })
+								logger.debug('Updating audio download progress', { progress })
 								ctx.api.editMessageText(
 									ctx.chat.id,
 									processingMessage.message_id,
-									`⬇️ Скачиваю\n${createProgressBar(progress)} ${progress}%`
-								).catch(() => { })
+									`⬇️ Скачиваю аудио\n${createProgressBar(progress)} ${progress}%`
+								).catch((err) => {
+									logger.warn('Failed to update progress message', { error: err.message })
+								})
 							}
 						}
 					}
