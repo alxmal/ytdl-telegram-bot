@@ -4,6 +4,7 @@ import { spawn } from "child_process"
 import { promises as fs } from "fs"
 import { join } from "path"
 import logger from "./logger"
+import { BOT_TOKEN } from "./environment"
 
 // Тип контекста для conversation (БЕЗ ConversationFlavor!)
 type CoverContext = Context
@@ -198,7 +199,7 @@ export async function coverConversation(
 			audioPath
 		})
 
-		const fileUrl = `https://api.telegram.org/file/bot${ctx.api.token}/${file.file_path}`
+		const fileUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${file.file_path}`
 		const response = await fetch(fileUrl)
 
 		if (!response.ok) {
@@ -277,7 +278,7 @@ export async function coverConversation(
 		const file = await ctx.api.getFile(photo.file_id)
 		const imagePath = join('/tmp', `image_${userId}_${Date.now()}.png`)
 
-		const fileUrl = `https://api.telegram.org/file/bot${ctx.api.token}/${file.file_path}`
+		const fileUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${file.file_path}`
 		const response = await fetch(fileUrl)
 		const buffer = await response.arrayBuffer()
 		await fs.writeFile(imagePath, Buffer.from(buffer))
