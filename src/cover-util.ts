@@ -108,8 +108,9 @@ async function createRotatingCover(
 			'-i', imagePath,
 			'-i', audioPath,
 			'-filter_complex', [
-				// Делаем круглую маску с прозрачностью
-				'[0:v]scale=512:512,format=rgba',
+				// Уменьшаем изображение на 10% (512 * 0.9 = 460)
+				'[0:v]scale=460:460,format=rgba',
+				// Делаем круглую маску с прозрачностью (радиус = 230 = 460/2)
 				'geq=\'lum=p(X,Y):a=if(lt(hypot(W/2-X,H/2-Y),W/2),255,0)\'',
 				// Вращение: 360 градусов каждые 10 секунд
 				'rotate=angle=2*PI*t/10:fillcolor=none:ow=512:oh=512',
@@ -186,6 +187,10 @@ export async function coverConversation(
 
 	let audioPath: string | undefined
 	let duration: number
+
+	// Сохраняем оригинальное имя файла для итогового видео
+	const originalFileName = audio.file_name || 'audio.mp3'
+	const baseFileName = originalFileName.replace(/\.mp3$/i, '') // убираем .mp3
 
 	try {
 		// Скачиваем аудио через getFile
@@ -411,8 +416,16 @@ export async function coverConversation(
 		const outputPath = join('/tmp', `video_${userId}_${Date.now()}.mp4`)
 		await createRotatingCover(audioPath, imagePath, outputPath, duration)
 
-		// Отправляем видео
-		const video = new InputFile(outputPath)
+		// Отправляем видео с именем как у исходного MP3
+		const videoFileName = `${baseFileName}.mp4`
+		const video = new InputFile(outputPath, videoFileName)
+
+		logger.debug('Sending video with original filename', {
+			userId,
+			originalAudioName: originalFileName,
+			videoFileName
+		})
+
 		await ctx.replyWithVideo(video, {
 			caption: '🎵 Ваше музыкальное видео готово!',
 			supports_streaming: true,
