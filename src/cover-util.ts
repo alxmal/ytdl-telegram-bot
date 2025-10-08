@@ -107,16 +107,15 @@ async function createRotatingCover(
 			'-loop', '1',
 			'-i', imagePath,
 			'-i', audioPath,
-			'-filter_complex', [
-				// Создаем черный фон
-				'color=black:s=512x512:d=' + duration + '[bg];',
-				// Уменьшаем PNG на 10%
-				'[0:v]scale=460:460[img];',
-				// Вращаем PNG (прозрачность сохраняется)
-				'[img]rotate=angle=2*PI*t/10:fillcolor=none:ow=512:oh=512[rotated];',
-				// Накладываем вращающийся PNG на черный фон (центрируем)
-				'[bg][rotated]overlay=(W-w)/2:(H-h)/2:format=yuv420p[v]'
-			].join(''),
+			'-filter_complex',
+			// Создаем черный фон
+			'color=black:s=512x512:d=' + duration + '[bg];' +
+			// Уменьшаем PNG на 10%
+			'[0:v]scale=460:460[img];' +
+			// Вращаем PNG (прозрачность сохраняется)
+			'[img]rotate=angle=2*PI*t/10:fillcolor=none:ow=512:oh=512[rotated];' +
+			// Накладываем вращающийся PNG на черный фон (центрируем)
+			'[bg][rotated]overlay=(W-w)/2:(H-h)/2,format=yuv420p[v]',
 			'-map', '[v]',
 			'-map', '1:a',
 			'-c:v', 'libx264',
