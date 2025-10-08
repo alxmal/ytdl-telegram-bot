@@ -108,14 +108,15 @@ async function createRotatingCover(
 			'-i', imagePath,
 			'-i', audioPath,
 			'-filter_complex', [
-				// Уменьшаем изображение на 10% (512 * 0.9 = 460)
-				'[0:v]scale=460:460,format=rgba',
-				// Делаем круглую маску с прозрачностью (радиус = 230 = 460/2)
-				'geq=\'lum=p(X,Y):a=if(lt(hypot(W/2-X,H/2-Y),W/2),255,0)\'',
-				// Вращение: 360 градусов каждые 10 секунд
-				'rotate=angle=2*PI*t/10:fillcolor=none:ow=512:oh=512',
-				'format=yuva420p[v]',
-			].join(','),
+				// Создаем черный фон
+				'color=black:s=512x512:d=' + duration + '[bg];',
+				// Уменьшаем PNG на 10%
+				'[0:v]scale=460:460[img];',
+				// Вращаем PNG (прозрачность сохраняется)
+				'[img]rotate=angle=2*PI*t/10:fillcolor=none:ow=512:oh=512[rotated];',
+				// Накладываем вращающийся PNG на черный фон (центрируем)
+				'[bg][rotated]overlay=(W-w)/2:(H-h)/2:format=yuv420p[v]'
+			].join(''),
 			'-map', '[v]',
 			'-map', '1:a',
 			'-c:v', 'libx264',
@@ -427,7 +428,7 @@ export async function coverConversation(
 		})
 
 		await ctx.replyWithVideo(video, {
-			caption: '🎵 Ваше музыкальное видео готово!',
+			caption: baseFileName,
 			supports_streaming: true,
 			duration: Math.round(duration)
 		})
