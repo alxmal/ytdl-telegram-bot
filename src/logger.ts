@@ -56,8 +56,11 @@ const consoleFormat = winston.format.combine(
 		if (info.audioPath) details.push(`audioPath=${info.audioPath}`)
 		if (info.imagePath) details.push(`imagePath=${info.imagePath}`)
 		if (info.output) details.push(`output="${info.output}"`)
-		if (info.progress) details.push(`progress=${info.progress}%`)
+		if (info.progress !== undefined && info.progress !== null) details.push(`progress=${info.progress}`)
 		if (info.message) details.push(`msg="${info.message}"`)
+		if (info.hasProgress !== undefined) details.push(`hasProgress=${info.hasProgress}`)
+		if (info.hasChatId !== undefined) details.push(`hasChatId=${info.hasChatId}`)
+		if (info.outputSample) details.push(`sample="${info.outputSample}"`)
 
 		if (details.length > 0) {
 			log += ` | ${details.join(' ')}`

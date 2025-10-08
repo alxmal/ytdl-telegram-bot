@@ -73,7 +73,7 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 		url: href
 	})
 
-	const processingMessage = await ctx.reply("🔄 Скачиваю...", { disable_notification: true })
+	const processingMessage = await ctx.reply("🔄 Ищу видео...", { disable_notification: true })
 	let ok = false;
 
 	await new Promise<void>((resolve) => {
@@ -82,6 +82,15 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 				const isYouTubeMusic = urlMatcher(href, "music.youtube.com")
 				const formatSelector = "best[height<=1080]/best"
 				const info = await getInfo(href, ["-f", formatSelector, "--no-playlist", ...(await cookieArgs())])
+
+				// Обновляем сообщение после получения информации
+				if (ctx.chat?.id) {
+					await ctx.api.editMessageText(
+						ctx.chat.id,
+						processingMessage.message_id,
+						"⬇️ Скачиваю..."
+					).catch(() => { })
+				}
 
 				logger.debug('Video info retrieved', {
 					title: info.title,
@@ -102,24 +111,25 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 				if (suitableFormat.vcodec !== "none" && !isYouTubeMusic) {
 					// Функция обновления прогресса для видео
 					let lastUpdateTime = 0
+					let accumulatedOutput = ''  // Накапливаем вывод
+
 					const updateProgress = (progressOutput: string) => {
 						const now = Date.now()
 
-						// Логируем вывод для отладки
-						logger.debug('youtube-dl video output', {
-							output: progressOutput.substring(0, 200)
-						})
+						// Накапливаем вывод (нужно для парсинга)
+						accumulatedOutput += progressOutput
 
 						// Обновляем раз в 1 секунду (видео скачивается быстро)
 						if (now - lastUpdateTime > 1000) {
 							lastUpdateTime = now
 
-							const progress = parseYoutubeDLProgress(progressOutput)
+							const progress = parseYoutubeDLProgress(accumulatedOutput)
 
 							logger.debug('Parsed progress from youtube-dl video', {
 								progress,
 								hasProgress: progress !== null,
-								hasChatId: !!ctx.chat?.id
+								hasChatId: !!ctx.chat?.id,
+								outputSample: progressOutput.substring(0, 100)
 							})
 
 							if (progress !== null && ctx.chat?.id) {
@@ -127,7 +137,7 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 								ctx.api.editMessageText(
 									ctx.chat.id,
 									processingMessage.message_id,
-									`⬇️ Загружаю \n${createProgressBar(progress)} ${progress}%`
+									`⬇️ Загружаю\n${createProgressBar(progress)} ${progress}%`
 								).catch((err) => {
 									logger.warn('Failed to update progress message', { error: err.message })
 								})
@@ -148,26 +158,27 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 						url: href
 					})
 				} else if (suitableFormat.acodec !== "none") {
-					// Функция обновления прогресса
+					// Функция обновления прогресса для аудио
 					let lastUpdateTime = 0
+					let accumulatedOutput = ''  // Накапливаем вывод
+
 					const updateProgress = (progressOutput: string) => {
 						const now = Date.now()
 
-						// Логируем вывод для отладки
-						logger.debug('youtube-dl audio output', {
-							output: progressOutput.substring(0, 200)
-						})
+						// Накапливаем вывод
+						accumulatedOutput += progressOutput
 
 						// Обновляем раз в 1 секунду
 						if (now - lastUpdateTime > 1000) {
 							lastUpdateTime = now
 
-							const progress = parseYoutubeDLProgress(progressOutput)
+							const progress = parseYoutubeDLProgress(accumulatedOutput)
 
 							logger.debug('Parsed progress from youtube-dl audio', {
 								progress,
 								hasProgress: progress !== null,
-								hasChatId: !!ctx.chat?.id
+								hasChatId: !!ctx.chat?.id,
+								outputSample: progressOutput.substring(0, 100)
 							})
 
 							if (progress !== null && ctx.chat?.id) {
@@ -175,7 +186,7 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 								ctx.api.editMessageText(
 									ctx.chat.id,
 									processingMessage.message_id,
-									`⬇️ Скачиваю аудио\n${createProgressBar(progress)} ${progress}%`
+									`⬇️ Загружаю\n${createProgressBar(progress)} ${progress}%`
 								).catch((err) => {
 									logger.warn('Failed to update progress message', { error: err.message })
 								})
