@@ -46,16 +46,23 @@ export function createProgressBar(percent: number): string {
  */
 export function parseYoutubeDLProgress(output: string): number | null {
 	// youtube-dl выводит: [download]  45.2% of 10.50MiB at 1.23MiB/s ETA 00:05
-	const downloadMatch = output.match(/\[download\]\s+(\d+\.?\d*)%/)
-	if (downloadMatch) {
-		return Math.min(Math.round(parseFloat(downloadMatch[1]!)), 100)
+	// Ищем последнее упоминание процента
+	const lines = output.split('\n')
+	for (let i = lines.length - 1; i >= 0; i--) {
+		const line = lines[i]
+		if (!line) continue
+
+		const downloadMatch = line.match(/\[download\]\s+(\d+\.?\d*)%/)
+		if (downloadMatch) {
+			const percent = parseFloat(downloadMatch[1]!)
+			return Math.min(Math.round(percent), 100)
+		}
 	}
 
 	// FFmpeg прогресс при конвертации: size=1024kB time=00:00:05.00
 	const ffmpegMatch = output.match(/time=(\d{2}):(\d{2}):(\d{2})/)
 	if (ffmpegMatch) {
 		// Без общей длительности просто показываем что идёт процесс
-		// Можно вернуть фиксированное значение или null
 		return 50  // Показываем что в процессе
 	}
 
