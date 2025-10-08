@@ -4,7 +4,7 @@ import { spawn } from "child_process"
 import { promises as fs } from "fs"
 import { join } from "path"
 import logger from "./logger"
-import { BOT_TOKEN } from "./environment"
+import { BOT_TOKEN, API_ROOT } from "./environment"
 
 // Тип контекста для conversation (БЕЗ ConversationFlavor!)
 type CoverContext = Context
@@ -188,41 +188,58 @@ export async function coverConversation(
 	let duration: number
 
 	try {
-		// Скачиваем аудио
-		const file = await ctx.api.getFile(audio.file_id)
+		// Скачиваем аудио через getFile
 		audioPath = join('/tmp', `audio_${userId}_${Date.now()}.mp3`)
 
-		logger.debug('Downloading audio file', {
+		logger.debug('Getting file info from Telegram', {
 			userId,
 			fileId: audio.file_id,
-			filePath: file.file_path,
 			audioPath
 		})
 
-		// Используем getFileUrl из Grammy (он сам формирует правильный URL)
-		const fileUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${file.file_path}`
-		logger.debug('Fetching file from Telegram', {
+		// Получаем информацию о файле
+		const file = await ctx.api.getFile(audio.file_id)
+
+		logger.debug('File info received', {
 			userId,
-			fileUrl: fileUrl.replace(BOT_TOKEN, '***TOKEN***'), // Скрываем токен в логах
+			fileId: audio.file_id,
+			filePath: file.file_path || 'undefined',
+			fileSize: file.file_size
+		})
+
+		// Скачиваем файл напрямую используя file_path
+		if (!file.file_path) {
+			throw new Error('File path is empty from Telegram API')
+		}
+
+		// Используем локальный API ROOT если настроен, иначе стандартный Telegram API
+		const fileUrl = `${API_ROOT}/file/bot${BOT_TOKEN}/${file.file_path}`
+		logger.debug('Downloading from URL', {
+			userId,
+			apiRoot: API_ROOT,
 			filePath: file.file_path,
-			hasToken: !!BOT_TOKEN,
-			tokenLength: BOT_TOKEN.length
+			urlPreview: fileUrl.substring(0, 60) + '...'
 		})
 
 		const response = await fetch(fileUrl)
 
 		if (!response.ok) {
-			logger.error('Failed to fetch file from Telegram', {
+			logger.error('Failed to download file', {
 				userId,
 				status: response.status,
 				statusText: response.statusText,
 				filePath: file.file_path,
-				url: fileUrl.substring(0, 50) + '...' // первые 50 символов URL
+				fileSize: file.file_size
 			})
 			throw new Error(`Failed to download audio: ${response.status} ${response.statusText}`)
 		}
 
 		const buffer = await response.arrayBuffer()
+		logger.debug('File buffer received', {
+			userId,
+			bufferSize: buffer.byteLength
+		})
+
 		await fs.writeFile(audioPath, Buffer.from(buffer))
 
 		// Проверяем что файл создался
@@ -301,11 +318,13 @@ export async function coverConversation(
 			imagePath
 		})
 
-		const fileUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${file.file_path}`
+		// Используем локальный API ROOT
+		const fileUrl = `${API_ROOT}/file/bot${BOT_TOKEN}/${file.file_path}`
 		logger.debug('Fetching image from Telegram', {
 			userId,
-			fileUrl: fileUrl.replace(BOT_TOKEN, '***TOKEN***'),
-			filePath: file.file_path
+			apiRoot: API_ROOT,
+			filePath: file.file_path,
+			urlPreview: fileUrl.substring(0, 60) + '...'
 		})
 
 		const response = await fetch(fileUrl)
