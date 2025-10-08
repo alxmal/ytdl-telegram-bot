@@ -159,7 +159,7 @@ export async function coverConversation(
 
 	// ========== ШАГ 1: Запрос MP3 файла ==========
 	await ctx.reply(
-		'🎵 Отправьте MP3 файл для создания музыкального видео',
+		'🎵 Отправьте MP3 файл',
 		{ disable_notification: true }
 	)
 
@@ -324,7 +324,7 @@ export async function coverConversation(
 	// ========== ШАГ 2: Запрос PNG изображения ==========
 	await ctx.reply(
 		`✅ Аудио получено (${Math.round(duration)}s)\n\n` +
-		'🖼️ Теперь отправьте изображение для обложки (PNG, желательно 512x512)',
+		'🖼️ Теперь отправьте изображение для обложки (PNG, 512x512, желательно круглое)',
 		{ disable_notification: true }
 	)
 
