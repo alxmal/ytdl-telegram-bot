@@ -61,6 +61,7 @@ export const downloadFromInfo = (
 	info: YouTubeDLInfo,
 	output: string,
 	args: string[] = [],
+	onProgress?: (progress: string) => void
 ): { stdout: Readable } => {
 	const process = spawn("youtube-dl", [
 		"--no-playlist",
@@ -69,6 +70,13 @@ export const downloadFromInfo = (
 		...args,
 		info.webpage_url || info.url || "",
 	])
+
+	// Передаём stderr если нужен прогресс
+	if (onProgress) {
+		process.stderr?.on('data', (data) => {
+			onProgress(data.toString())
+		})
+	}
 
 	return { stdout: process.stdout }
 }

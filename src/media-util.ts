@@ -5,6 +5,7 @@ import { deleteMessage, errorMessage } from './bot-util'
 import type { Queue } from "./queue"
 import { cookieArgs } from './environment'
 import logger from './logger'
+import { parseYoutubeDLProgress, createProgressBar } from './ffmpeg-util'
 
 type Thumbnail = {
 	url: string
@@ -111,7 +112,27 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 						url: href
 					})
 				} else if (suitableFormat.acodec !== "none") {
-					const stream = downloadFromInfo(info, "-", ["-x", "--audio-format", "mp3"])
+					// Функция обновления прогресса
+					let lastUpdateTime = 0
+					const updateProgress = (progressOutput: string) => {
+						const now = Date.now()
+
+						// Обновляем раз в 2 секунды
+						if (now - lastUpdateTime > 2000) {
+							lastUpdateTime = now
+
+							const progress = parseYoutubeDLProgress(progressOutput)
+							if (progress !== null && ctx.chat?.id) {
+								ctx.api.editMessageText(
+									ctx.chat.id,
+									processingMessage.message_id,
+									`⬇️ Скачиваю\n${createProgressBar(progress)} ${progress}%`
+								).catch(() => { })
+							}
+						}
+					}
+
+					const stream = downloadFromInfo(info, "-", ["-x", "--audio-format", "mp3"], updateProgress)
 					const audio = new InputFile(stream.stdout)
 					await ctx.replyWithAudio(audio, {
 						caption: title,

@@ -5,6 +5,7 @@ import { promises as fs } from "fs"
 import { join } from "path"
 import logger from "./logger"
 import { BOT_TOKEN, API_ROOT } from "./environment"
+import { parseFFmpegProgress, createProgressBar } from "./ffmpeg-util"
 
 // Тип контекста для conversation (БЕЗ ConversationFlavor!)
 type CoverContext = Context
@@ -100,21 +101,19 @@ async function createRotatingCover(
 	audioPath: string,
 	imagePath: string,
 	outputPath: string,
-	duration: number
+	duration: number,
+	progressCallback?: (progress: number) => void  // ← Коллбэк для прогресса
 ): Promise<void> {
 	return new Promise((resolve, reject) => {
 		const ffmpeg = spawn('ffmpeg', [
+			'-progress', 'pipe:1',  // ← Выводить прогресс в stdout
 			'-loop', '1',
 			'-i', imagePath,
 			'-i', audioPath,
 			'-filter_complex',
-			// Создаем черный фон
 			'color=black:s=512x512:d=' + duration + '[bg];' +
-			// Уменьшаем PNG на 10%
 			'[0:v]scale=460:460[img];' +
-			// Вращаем PNG (прозрачность сохраняется)
 			'[img]rotate=angle=2*PI*t/10:fillcolor=none:ow=512:oh=512[rotated];' +
-			// Накладываем вращающийся PNG на черный фон (центрируем)
 			'[bg][rotated]overlay=(W-w)/2:(H-h)/2,format=yuv420p[v]',
 			'-map', '[v]',
 			'-map', '1:a',
@@ -126,16 +125,39 @@ async function createRotatingCover(
 			outputPath
 		])
 
+		let stderrData = ''
+
+		// Парсим прогресс из stdout (когда используем -progress pipe:1)
+		ffmpeg.stdout.on('data', (data) => {
+			if (progressCallback) {
+				const progress = parseFFmpegProgress(data.toString(), duration)
+				if (progress !== null) {
+					progressCallback(progress)
+				}
+			}
+		})
+
+		// Парсим прогресс из stderr (стандартный вывод FFmpeg)
+		ffmpeg.stderr.on('data', (data) => {
+			stderrData += data.toString()
+			if (progressCallback) {
+				const progress = parseFFmpegProgress(stderrData, duration)
+				if (progress !== null) {
+					progressCallback(progress)
+				}
+			}
+
+			// Логируем вывод FFmpeg для отладки
+			logger.debug('FFmpeg output', { message: data.toString() })
+		})
+
 		ffmpeg.on('close', (code) => {
 			if (code === 0) {
+				if (progressCallback) progressCallback(100)  // Завершено
 				resolve()
 			} else {
 				reject(new Error(`FFmpeg exited with code ${code}`))
 			}
-		})
-
-		ffmpeg.stderr.on('data', (data) => {
-			logger.debug('FFmpeg output', { message: data.toString() })
 		})
 	})
 }
@@ -412,9 +434,24 @@ export async function coverConversation(
 			await fs.writeFile(imagePath, Buffer.from(buffer))
 		}
 
-		// Создаём видео с вращающейся обложкой
+		// // Прогресс-бар
+		// const progressBar = (percent: number) => {
+		// 	const filled = Math.floor(percent / 10)
+		// 	const empty = 10 - filled
+		// 	return '█'.repeat(filled) + '░'.repeat(empty)
+		// }
+
+		// Обновление прогресса
+		const updateProgress = async (progress: number) => {
+			await ctx.api.editMessageText(
+				chatId!,
+				processingVideoMsg.message_id,
+				`🎬 Создаю видео\n${createProgressBar(progress)} ${progress}%`
+			).catch(() => { })
+		}
+
 		const outputPath = join('/tmp', `video_${userId}_${Date.now()}.mp4`)
-		await createRotatingCover(audioPath, imagePath, outputPath, duration)
+		await createRotatingCover(audioPath, imagePath, outputPath, duration, updateProgress)
 
 		// Отправляем видео с именем как у исходного MP3
 		const videoFileName = `${baseFileName}.mp4`
