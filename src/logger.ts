@@ -44,6 +44,18 @@ const consoleFormat = winston.format.combine(
 		if (info.uploader) details.push(`uploader="${info.uploader}"`)
 		if (info.error) details.push(`error="${info.error}"`)
 
+		// Добавляем поля для диагностики /cover
+		if (info.fileId) details.push(`fileId=${info.fileId}`)
+		if (info.filePath) details.push(`filePath=${info.filePath}`)
+		if (info.fileSize) details.push(`fileSize=${info.fileSize}`)
+		if (info.apiRoot) details.push(`apiRoot=${info.apiRoot}`)
+		if (info.urlPreview) details.push(`url=${info.urlPreview}`)
+		if (info.status) details.push(`status=${info.status}`)
+		if (info.statusText) details.push(`statusText=${info.statusText}`)
+		if (info.bufferSize) details.push(`bufferSize=${info.bufferSize}`)
+		if (info.audioPath) details.push(`audioPath=${info.audioPath}`)
+		if (info.imagePath) details.push(`imagePath=${info.imagePath}`)
+
 		if (details.length > 0) {
 			log += ` | ${details.join(' ')}`
 		}
