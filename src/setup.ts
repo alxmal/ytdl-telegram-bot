@@ -1,19 +1,40 @@
 import type { ParseModeFlavor } from "@grammyjs/parse-mode"
-import type { Context } from "grammy"
+import type { Context, SessionFlavor } from "grammy"
+import type { ConversationFlavor } from "@grammyjs/conversations"
 
 import { hydrateReply } from "@grammyjs/parse-mode"
+import { conversations, createConversation } from "@grammyjs/conversations"
 import express from "express"
-import { Bot, webhookCallback } from "grammy"
+import { Bot, session, webhookCallback } from "grammy"
 import { ALLOW_GROUPS, API_ROOT, BOT_TOKEN, WEBHOOK_PORT, WEBHOOK_URL } from "./environment"
 import logger from "./logger"
 
-export const bot = new Bot<ParseModeFlavor<Context>>(BOT_TOKEN, {
+// Тип контекста с parse mode, session и conversations
+type BotContext = ParseModeFlavor<Context> & SessionFlavor<{}> & ConversationFlavor<Context>
+
+export const bot = new Bot<BotContext>(BOT_TOKEN, {
 	client: { apiRoot: API_ROOT },
 	botInfo: undefined,
 })
 
+// Session для conversations (обязательно!)
+bot.use(session({
+	initial: () => ({})
+}))
+
+// Подключаем conversations plugin
+bot.use(conversations())
+
+// Регистрируем conversation для /cover (динамический импорт)
+const { coverConversation } = await import("./cover-util.js")
+bot.use(createConversation(coverConversation))
+
 await bot.api.setMyCommands(
-	[{ command: "v", description: "Загрузить видео: /v <url>" }, { command: "chatid", description: "Узнать chat id" }],
+	[
+		{ command: "v", description: "Загрузить видео: /v <url>" },
+		{ command: "cover", description: "Создать музыкальное видео с обложкой" },
+		{ command: "chatid", description: "Узнать chat id" }
+	],
 	{ scope: { type: "all_group_chats" } }, // команды для всех групп
 )
 

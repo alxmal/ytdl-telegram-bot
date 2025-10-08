@@ -1,0 +1,232 @@
+import { Context, InputFile } from "grammy"
+import type { Conversation, ConversationFlavor } from "@grammyjs/conversations"
+import { spawn } from "child_process"
+import { promises as fs } from "fs"
+import { join } from "path"
+import logger from "./logger"
+
+// Тип контекста для conversation (БЕЗ ConversationFlavor!)
+type CoverContext = Context
+
+/** NAV: UTIL getAudioDuration
+ * Получает длительность аудио через FFprobe
+ */
+async function getAudioDuration(audioPath: string): Promise<number> {
+	return new Promise((resolve, reject) => {
+		const ffprobe = spawn('ffprobe', [
+			'-v', 'error',
+			'-show_entries', 'format=duration',
+			'-of', 'default=noprint_wrappers=1:nokey=1',
+			audioPath
+		])
+
+		let output = ''
+		ffprobe.stdout.on('data', (data) => { output += data })
+		ffprobe.on('close', (code) => {
+			if (code === 0) {
+				resolve(parseFloat(output.trim()))
+			} else {
+				reject(new Error('Failed to get audio duration'))
+			}
+		})
+	})
+}
+
+/** NAV: UTIL createRotatingCover
+ * Создаёт видео с вращающейся обложкой (360° каждые 10 секунд)
+ */
+async function createRotatingCover(
+	audioPath: string,
+	imagePath: string,
+	outputPath: string,
+	duration: number
+): Promise<void> {
+	return new Promise((resolve, reject) => {
+		const ffmpeg = spawn('ffmpeg', [
+			'-loop', '1',
+			'-i', imagePath,
+			'-i', audioPath,
+			'-filter_complex', [
+				// Делаем круглую маску с прозрачностью
+				'[0:v]scale=512:512,format=rgba',
+				'geq=\'lum=p(X,Y):a=if(lt(hypot(W/2-X,H/2-Y),W/2),255,0)\'',
+				// Вращение: 360 градусов каждые 10 секунд
+				'rotate=angle=2*PI*t/10:fillcolor=none:ow=512:oh=512',
+				'format=yuva420p[v]',
+			].join(','),
+			'-map', '[v]',
+			'-map', '1:a',
+			'-c:v', 'libx264',
+			'-c:a', 'copy',
+			'-shortest',
+			'-t', duration.toString(),
+			'-y',
+			outputPath
+		])
+
+		ffmpeg.on('close', (code) => {
+			if (code === 0) {
+				resolve()
+			} else {
+				reject(new Error(`FFmpeg exited with code ${code}`))
+			}
+		})
+
+		ffmpeg.stderr.on('data', (data) => {
+			logger.debug('FFmpeg output', { message: data.toString() })
+		})
+	})
+}
+
+/** NAV: CONVERSATION coverConversation
+ * Диалог для создания музыкального видео с вращающейся обложкой
+ */
+export async function coverConversation(
+	conversation: Conversation<CoverContext>,
+	ctx: CoverContext
+) {
+	const userId = ctx.from?.id
+	const chatId = ctx.chat?.id
+
+	logger.info('Cover conversation started', {
+		userId,
+		username: ctx.from?.username,
+		chatId
+	})
+
+	// ========== ШАГ 1: Запрос MP3 файла ==========
+	await ctx.reply(
+		'🎵 Отправьте MP3 файл для создания музыкального видео',
+		{ disable_notification: true }
+	)
+
+	// Ждём аудио или документ
+	const audioCtx = await conversation.waitFor([':audio', ':document'])
+	
+	const audio = audioCtx.message?.audio || 
+		(audioCtx.message?.document?.mime_type?.includes('audio/mpeg') 
+			? audioCtx.message.document 
+			: null)
+
+	// Валидация MP3
+	if (!audio || 
+			(!audio.mime_type?.includes('audio/mpeg') && 
+			 !audio.file_name?.endsWith('.mp3'))) {
+		await ctx.reply('❌ Нужен файл в формате MP3')
+		logger.warn('Invalid audio format in cover conversation', {
+			userId,
+			mimeType: audioCtx.message?.document?.mime_type
+		})
+		return
+	}
+
+	// Обработка аудио
+	const processingAudioMsg = await ctx.reply('⏳ Обрабатываю аудио...')
+	
+	let audioPath: string
+	let duration: number
+	
+	try {
+		// Скачиваем аудио
+		const file = await ctx.api.getFile(audio.file_id)
+		audioPath = join('/tmp', `audio_${userId}_${Date.now()}.mp3`)
+		
+		const fileUrl = `https://api.telegram.org/file/bot${ctx.api.token}/${file.file_path}`
+		const response = await fetch(fileUrl)
+		const buffer = await response.arrayBuffer()
+		await fs.writeFile(audioPath, Buffer.from(buffer))
+
+		// Получаем длительность
+		duration = await getAudioDuration(audioPath)
+
+		await ctx.api.deleteMessage(chatId!, processingAudioMsg.message_id)
+		
+		logger.info('Audio processed in cover conversation', {
+			userId,
+			audioPath,
+			duration,
+			fileSize: audio.file_size
+		})
+	} catch (error) {
+		await ctx.reply('❌ Ошибка при обработке аудио')
+		logger.error('Audio processing failed in cover conversation', {
+			userId,
+			error: error instanceof Error ? error.message : 'Unknown'
+		})
+		return
+	}
+
+	// ========== ШАГ 2: Запрос PNG изображения ==========
+	await ctx.reply(
+		`✅ Аудио получено (${Math.round(duration)}s)\n\n` +
+		'🖼️ Теперь отправьте изображение для обложки (PNG, желательно 512x512)',
+		{ disable_notification: true }
+	)
+
+	// Ждём фото или документ
+	const imageCtx = await conversation.waitFor([':photo', ':document'])
+	
+	const photo = imageCtx.message?.photo?.[imageCtx.message.photo.length - 1] ||
+		(imageCtx.message?.document?.mime_type?.includes('image/')
+			? imageCtx.message.document
+			: null)
+
+	// Валидация изображения
+	if (!photo) {
+		await ctx.reply('❌ Нужно изображение')
+		logger.warn('No image in cover conversation', { userId })
+		// Очистка аудио файла
+		await fs.unlink(audioPath).catch(() => {})
+		return
+	}
+
+	// Обработка изображения и создание видео
+	const processingVideoMsg = await ctx.reply('🎬 Создаю музыкальное видео...')
+	
+	try {
+		// Скачиваем изображение
+		const file = await ctx.api.getFile(photo.file_id)
+		const imagePath = join('/tmp', `image_${userId}_${Date.now()}.png`)
+		
+		const fileUrl = `https://api.telegram.org/file/bot${ctx.api.token}/${file.file_path}`
+		const response = await fetch(fileUrl)
+		const buffer = await response.arrayBuffer()
+		await fs.writeFile(imagePath, Buffer.from(buffer))
+
+		// Создаём видео с вращающейся обложкой
+		const outputPath = join('/tmp', `video_${userId}_${Date.now()}.mp4`)
+		await createRotatingCover(audioPath, imagePath, outputPath, duration)
+
+		// Отправляем видео
+		const video = new InputFile(outputPath)
+		await ctx.replyWithVideo(video, {
+			caption: '🎵 Ваше музыкальное видео готово!',
+			supports_streaming: true,
+			duration: Math.round(duration)
+		})
+
+		// Очистка временных файлов
+		await ctx.api.deleteMessage(chatId!, processingVideoMsg.message_id)
+		await fs.unlink(audioPath).catch(() => {})
+		await fs.unlink(imagePath).catch(() => {})
+		await fs.unlink(outputPath).catch(() => {})
+
+		logger.info('Cover video created successfully', {
+			userId,
+			duration,
+			outputPath
+		})
+	} catch (error) {
+		await ctx.reply('❌ Ошибка при создании видео')
+		
+		// Очистка при ошибке
+		await fs.unlink(audioPath).catch(() => {})
+
+		logger.error('Cover video creation failed', {
+			userId,
+			error: error instanceof Error ? error.message : 'Unknown',
+			stack: error instanceof Error ? error.stack : undefined
+		})
+	}
+}
+

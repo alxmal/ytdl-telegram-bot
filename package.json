@@ -25,6 +25,7 @@
 		"vitest": "^3.2.4"
 	},
 	"dependencies": {
+		"@grammyjs/conversations": "^2.1.0",
 		"@grammyjs/parse-mode": "^1.11.1",
 		"@types/winston": "^2.4.4",
 		"croner": "^9.0.0",

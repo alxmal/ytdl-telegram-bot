@@ -18,6 +18,35 @@ import { Updater } from "./updater"
 const queue = new Queue()
 const updater = new Updater()
 
+/** NAV: MIDDLEWARE whitelist-commands
+ * Проверяет whitelist для ВСЕХ команд бота
+ */
+bot.filter((ctx) => {
+	// Проверяем, это команда?
+	const isCommand = ctx.message?.entities?.some(e => e.type === 'bot_command') ?? false
+	if (!isCommand) return true // Не команда - пропускаем дальше
+
+	// Если whitelist пуст - разрешаем всем
+	if (WHITELISTED_IDS.length === 0) return true
+
+	// Проверяем чат и пользователя
+	const chatAllowed = WHITELISTED_CHAT_IDS.includes(ctx.chat?.id ?? 0)
+	const userAllowed = ctx.from && WHITELISTED_IDS.includes(ctx.from.id)
+
+	if (!chatAllowed && !userAllowed) {
+		const command = ctx.message?.text?.split(' ')[0]
+		logger.warn('Command blocked by whitelist', {
+			command,
+			chatId: ctx.chat?.id,
+			userId: ctx.from?.id,
+			username: ctx.from?.username
+		})
+		return false
+	}
+
+	return true
+})
+
 /** NAV: MIDDLEWARE whitelist-users
  * Разрешает сообщения только от `WHITELISTED_IDS` (если список не пуст).
  * Тихо игнорирует остальных.
@@ -67,11 +96,11 @@ bot.on("message:text").on("::url", async (ctx, next) => {
 
 /** NAV: HANDLER mention-with-url
  * Группы: сообщение с упоминанием бота и URL → скачать и отправить в этот чат.
+ * Whitelist пользователей проверяется middleware выше (строки 54-59)
  */
 bot.on("message:text", async (ctx, next) => {
 	// Только whitelisted чаты
 	if (!WHITELISTED_CHAT_IDS.includes(ctx.chat?.id ?? 0)) return await next()
-	if (WHITELISTED_IDS.length > 0 && (!ctx.from || !WHITELISTED_IDS.includes(ctx.from.id))) return await next()
 
 	// Упоминание бота
 	const me = bot.botInfo?.username
@@ -97,13 +126,12 @@ bot.on("message:text", async (ctx, next) => {
 })
 
 /** NAV: COMMAND v
- * Группы: команда `/v <url>` в чатах из `WHITELISTED_CHAT_IDS`.
- * Если `WHITELISTED_IDS` задан, доступна только перечисленным юзерам.
+ * Группы: команда `/v <url>` для скачивания видео.
+ * Whitelist проверяется глобальной middleware выше
  */
 bot.command("v", async (ctx, next) => {
-	// Allow only in whitelisted chats
+	// Только в whitelisted чатах (дополнительная проверка для /v)
 	if (!WHITELISTED_CHAT_IDS.includes(ctx.chat.id)) return await next()
-	if (WHITELISTED_IDS.length > 0 && (!ctx.from || !WHITELISTED_IDS.includes(ctx.from.id))) return await next()
 
 	// Extract URL after the command
 	const messageText = ctx.message?.text || ""
@@ -124,6 +152,14 @@ bot.command("v", async (ctx, next) => {
 		}
 	})()
 	return
+})
+
+/** NAV: COMMAND /cover
+ * Создание музыкального видео с вращающейся обложкой
+ * Whitelist проверяется глобальной middleware выше
+ */
+bot.command("cover", async (ctx) => {
+	await ctx.conversation.enter("coverConversation")
 })
 
 /** NAV: COMMAND chatid
