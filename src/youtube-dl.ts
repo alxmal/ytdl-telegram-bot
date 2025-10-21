@@ -50,7 +50,24 @@ export const getInfo = async (url: string, args: string[] = []): Promise<YouTube
 			}
 
 			try {
-				resolve(JSON.parse(stdout))
+				const info = JSON.parse(stdout)
+
+				// Логируем полученную информацию
+				console.log('=== YOUTUBE-DL INFO ===')
+				console.log('Title:', info.title)
+				console.log('Duration:', info.duration)
+				console.log('Uploader:', info.uploader)
+				console.log('Formats count:', info.formats?.length)
+				console.log('Formats:', info.formats?.map((f: any) => ({
+					format_id: f.format_id,
+					ext: f.ext,
+					vcodec: f.vcodec,
+					acodec: f.acodec,
+					url: f.url ? 'HAS_URL' : 'NO_URL'
+				})))
+				console.log('======================')
+
+				resolve(info)
 			} catch (error) {
 				reject(new Error(`Failed to parse youtube-dl output: ${String(error)}`))
 			}
