@@ -145,23 +145,23 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 						}
 					}
 
-					const { stdout, process } = downloadFromInfo(info, "-", [], updateProgress)
+					const stream = downloadFromInfo(info, "-", [], updateProgress)
 
 					// Ждем завершения процесса и проверяем код выхода
-					const downloadSuccess = await new Promise<boolean>((resolve) => {
-						process.once('close', (code: number) => {
-							resolve(code === 0)
-						})
-						process.once('error', () => {
-							resolve(false)
-						})
-					})
+					// const downloadSuccess = await new Promise<boolean>((resolve) => {
+					// 	process.once('close', (code: number) => {
+					// 		resolve(code === 0)
+					// 	})
+					// 	process.once('error', () => {
+					// 		resolve(false)
+					// 	})
+					// })
 
-					if (!downloadSuccess) {
-						throw new Error("Download failed - youtube-dl process exited with non-zero code")
-					}
+					// if (!downloadSuccess) {
+					// 	throw new Error("Download failed - youtube-dl process exited with non-zero code")
+					// }
 
-					const video = new InputFile(stdout, title)
+					const video = new InputFile(stream.stdout, title)
 					await ctx.replyWithVideo(video, { caption: title, supports_streaming: true, duration: info.duration })
 					ok = true;
 

@@ -62,7 +62,7 @@ export const downloadFromInfo = (
 	output: string,
 	args: string[] = [],
 	onProgress?: (progress: string) => void
-): { stdout: Readable; process: any } => {
+): { stdout: Readable } => {
 	const process = spawn("youtube-dl", [
 		"--newline",  // Выводить прогресс построчно для легкого парсинга
 		"--no-playlist",
@@ -79,5 +79,5 @@ export const downloadFromInfo = (
 		})
 	}
 
-	return { stdout: process.stdout, process: process }
+	return { stdout: process.stdout }
 }
