@@ -80,7 +80,7 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 		queue.add(async () => {
 			try {
 				const isYouTubeMusic = urlMatcher(href, "music.youtube.com")
-				const formatSelector = "best[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
+				const formatSelector = "bestvideo[ext=mp4]+bestaudio[ext=m4a]"
 				const info = await getInfo(href, ["-f", formatSelector, "--no-playlist", ...(await cookieArgs())])
 
 				// Обновляем сообщение после получения информации
