@@ -85,6 +85,7 @@ export const downloadFromInfo = (
 	console.log('youtube-dl args:', [
 		"--newline",
 		"--no-playlist",
+		"--merge-output-format", "mp4",  // Принудительно объединить в MP4
 		"-o",
 		output,
 		...args,
