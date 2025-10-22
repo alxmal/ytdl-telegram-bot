@@ -108,6 +108,18 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 
 				if (!suitableFormat?.url) throw new Error("No suitable format available")
 
+				console.log('=== SELECTED FORMAT ===')
+				console.log('Selected format:', {
+					format_id: suitableFormat.format_id,
+					ext: suitableFormat.ext,
+					vcodec: suitableFormat.vcodec,
+					acodec: suitableFormat.acodec,
+					height: suitableFormat.height,
+					width: suitableFormat.width,
+					url: suitableFormat.url ? 'HAS_URL' : 'NO_URL'
+				})
+				console.log('======================')
+
 				const title = removeHashtagsMentions(info.title)
 
 				if (suitableFormat.vcodec !== "none" && !isYouTubeMusic) {

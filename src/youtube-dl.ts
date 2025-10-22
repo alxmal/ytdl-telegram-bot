@@ -80,6 +80,18 @@ export const downloadFromInfo = (
 	args: string[] = [],
 	onProgress?: (progress: string) => void
 ): { stdout: Readable } => {
+
+	console.log('=== DOWNLOAD ARGS ===')
+	console.log('youtube-dl args:', [
+		"--newline",
+		"--no-playlist",
+		"-o",
+		output,
+		...args,
+		info.webpage_url || info.url || "",
+	])
+	console.log('====================')
+
 	const process = spawn("youtube-dl", [
 		"--newline",  // Выводить прогресс построчно для легкого парсинга
 		"--no-playlist",
