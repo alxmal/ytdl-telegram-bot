@@ -122,7 +122,7 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 
 				const title = removeHashtagsMentions(info.title)
 
-				if (suitableFormat.vcodec !== "none" && !isYouTubeMusic) {
+				if (!isYouTubeMusic) {
 					// Функция обновления прогресса для видео
 					let lastUpdateTime = 0
 					let accumulatedOutput = ''  // Накапливаем вывод
