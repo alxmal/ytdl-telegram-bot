@@ -100,11 +100,11 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 					url: href
 				})
 
-				const suitableFormat =
-					info.formats?.find((f) => f.vcodec !== "none" && f.acodec !== "none" && typeof f.url === "string")
-					?? info.formats?.find((f) => typeof f.url === "string")
+				// const suitableFormat =
+				// 	info.formats?.find((f) => f.vcodec !== "none" && f.acodec !== "none" && typeof f.url === "string")
+				// 	?? info.formats?.find((f) => typeof f.url === "string")
 
-				// const suitableFormat = info.formats?.find((f) => typeof f.url === "string")
+				const suitableFormat = info.formats?.find((f) => typeof f.url === "string")
 
 				if (!suitableFormat?.url) throw new Error("No suitable format available")
 
