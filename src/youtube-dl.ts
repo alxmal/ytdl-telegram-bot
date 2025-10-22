@@ -96,6 +96,7 @@ export const downloadFromInfo = (
 	const process = spawn("youtube-dl", [
 		"--newline",  // Выводить прогресс построчно для легкого парсинга
 		"--no-playlist",
+		"--merge-output-format", "mp4",
 		"-o",
 		output,
 		...args,

@@ -159,7 +159,7 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 						}
 					}
 
-					const stream = downloadFromInfo(info, "-", [], updateProgress)
+					const stream = downloadFromInfo(info, "-", ["-f", formatSelector], updateProgress)
 
 					const video = new InputFile(stream.stdout, title)
 					await ctx.replyWithVideo(video, { caption: title, supports_streaming: true, duration: info.duration })
