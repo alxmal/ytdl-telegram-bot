@@ -80,7 +80,7 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 		queue.add(async () => {
 			try {
 				const isYouTubeMusic = urlMatcher(href, "music.youtube.com")
-				const formatSelector = "best[height<=1080]+bestaudio/best"
+				const formatSelector = "best"
 				const info = await getInfo(href, ["-f", formatSelector, "--no-playlist", ...(await cookieArgs())])
 
 				// Обновляем сообщение после получения информации
@@ -100,11 +100,11 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 					url: href
 				})
 
-				// const suitableFormat =
-				// 	info.formats?.find((f) => f.vcodec !== "none" && f.acodec !== "none" && typeof f.url === "string")
-				// 	?? info.formats?.find((f) => typeof f.url === "string")
+				const suitableFormat =
+					info.formats?.find((f) => f.vcodec !== "none" && f.acodec !== "none" && typeof f.url === "string")
+					?? info.formats?.find((f) => typeof f.url === "string")
 
-				const suitableFormat = info.formats?.find((f) => typeof f.url === "string")
+				// const suitableFormat = info.formats?.find((f) => typeof f.url === "string")
 
 				if (!suitableFormat?.url) throw new Error("No suitable format available")
 
@@ -121,8 +121,8 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 						// Накапливаем вывод (нужно для парсинга)
 						accumulatedOutput += progressOutput
 
-						// Обновляем раз в 1 секунду (видео скачивается быстро)
-						if (now - lastUpdateTime > 1000) {
+						// Обновляем раз в 2 секунды (видео скачивается быстро)
+						if (now - lastUpdateTime > 2000) {
 							lastUpdateTime = now
 
 							const progress = parseYoutubeDLProgress(accumulatedOutput)
@@ -160,63 +160,64 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 						duration: info.duration,
 						url: href
 					})
-				} else if (suitableFormat.acodec !== "none") {
-					// Функция обновления прогресса для аудио
-					let lastUpdateTime = 0
-					let accumulatedOutput = ''  // Накапливаем вывод
-
-					const updateProgress = (progressOutput: string) => {
-						const now = Date.now()
-
-						// Накапливаем вывод
-						accumulatedOutput += progressOutput
-
-						// Обновляем раз в 1 секунду
-						if (now - lastUpdateTime > 1000) {
-							lastUpdateTime = now
-
-							const progress = parseYoutubeDLProgress(accumulatedOutput)
-
-							logger.debug('Parsed progress from youtube-dl audio', {
-								progress,
-								hasProgress: progress !== null,
-								hasChatId: !!ctx.chat?.id,
-								outputSample: progressOutput.substring(0, 100)
-							})
-
-							if (progress !== null && ctx.chat?.id) {
-								logger.debug('Updating audio download progress', { progress })
-								ctx.api.editMessageText(
-									ctx.chat.id,
-									processingMessage.message_id,
-									`⬇️ Загружаю\n${createProgressBar(progress)} ${progress}%`
-								).catch((err) => {
-									logger.warn('Failed to update progress message', { error: err.message })
-								})
-							}
-						}
-					}
-
-					const stream = downloadFromInfo(info, "-", ["-x", "--audio-format", "mp3"], updateProgress)
-					const audio = new InputFile(stream.stdout)
-					await ctx.replyWithAudio(audio, {
-						caption: title,
-						performer: info.uploader,
-						title: info.title,
-						thumbnail: getThumbnail(info.thumbnails),
-						duration: info.duration,
-					})
-					ok = true;
-
-					logger.info('Audio sent successfully', {
-						chatId: ctx.chat?.id,
-						userId: ctx.from?.id,
-						title: title,
-						performer: info.uploader,
-						duration: info.duration,
-						url: href
-					})
 				}
+				// } else if (suitableFormat.acodec !== "none") {
+				// 	// Функция обновления прогресса для аудио
+				// 	let lastUpdateTime = 0
+				// 	let accumulatedOutput = ''  // Накапливаем вывод
+
+				// 	const updateProgress = (progressOutput: string) => {
+				// 		const now = Date.now()
+
+				// 		// Накапливаем вывод
+				// 		accumulatedOutput += progressOutput
+
+				// 		// Обновляем раз в 1 секунду
+				// 		if (now - lastUpdateTime > 1000) {
+				// 			lastUpdateTime = now
+
+				// 			const progress = parseYoutubeDLProgress(accumulatedOutput)
+
+				// 			logger.debug('Parsed progress from youtube-dl audio', {
+				// 				progress,
+				// 				hasProgress: progress !== null,
+				// 				hasChatId: !!ctx.chat?.id,
+				// 				outputSample: progressOutput.substring(0, 100)
+				// 			})
+
+				// 			if (progress !== null && ctx.chat?.id) {
+				// 				logger.debug('Updating audio download progress', { progress })
+				// 				ctx.api.editMessageText(
+				// 					ctx.chat.id,
+				// 					processingMessage.message_id,
+				// 					`⬇️ Загружаю\n${createProgressBar(progress)} ${progress}%`
+				// 				).catch((err) => {
+				// 					logger.warn('Failed to update progress message', { error: err.message })
+				// 				})
+				// 			}
+				// 		}
+				// 	}
+
+				// 	const stream = downloadFromInfo(info, "-", ["-x", "--audio-format", "mp3"], updateProgress)
+				// 	const audio = new InputFile(stream.stdout)
+				// 	await ctx.replyWithAudio(audio, {
+				// 		caption: title,
+				// 		performer: info.uploader,
+				// 		title: info.title,
+				// 		thumbnail: getThumbnail(info.thumbnails),
+				// 		duration: info.duration,
+				// 	})
+				// 	ok = true;
+
+				// 	logger.info('Audio sent successfully', {
+				// 		chatId: ctx.chat?.id,
+				// 		userId: ctx.from?.id,
+				// 		title: title,
+				// 		performer: info.uploader,
+				// 		duration: info.duration,
+				// 		url: href
+				// 	})
+				// }
 			} catch (error) {
 				logger.error('Video processing failed', {
 					chatId: ctx.chat?.id,
