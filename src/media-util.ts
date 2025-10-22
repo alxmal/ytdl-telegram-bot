@@ -80,7 +80,7 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 		queue.add(async () => {
 			try {
 				const isYouTubeMusic = urlMatcher(href, "music.youtube.com")
-				const formatSelector = "best[height<=1080]/best"
+				const formatSelector = "best[height<=1080]+bestaudio/best"
 				const info = await getInfo(href, ["-f", formatSelector, "--no-playlist", ...(await cookieArgs())])
 
 				// Обновляем сообщение после получения информации
@@ -100,9 +100,11 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 					url: href
 				})
 
-				const suitableFormat =
-					info.formats?.find((f) => f.vcodec !== "none" && f.acodec !== "none" && typeof f.url === "string")
-					?? info.formats?.find((f) => typeof f.url === "string")
+				// const suitableFormat =
+				// 	info.formats?.find((f) => f.vcodec !== "none" && f.acodec !== "none" && typeof f.url === "string")
+				// 	?? info.formats?.find((f) => typeof f.url === "string")
+
+				const suitableFormat = info.formats?.find((f) => typeof f.url === "string")
 
 				if (!suitableFormat?.url) throw new Error("No suitable format available")
 
