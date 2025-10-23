@@ -1,4 +1,4 @@
-// src/youtube-dl.ts
+// src/yt-dlp.ts
 import { spawn } from "node:child_process"
 import { Readable } from "node:stream"
 
@@ -26,7 +26,7 @@ export interface YouTubeDLInfo {
 
 export const getInfo = async (url: string, args: string[] = []): Promise<YouTubeDLInfo> =>
 	new Promise((resolve, reject) => {
-		const process = spawn("youtube-dl", ["--dump-json", "--no-playlist", ...args, url])
+		const process = spawn("yt-dlp", ["--dump-json", "--no-playlist", ...args, url])
 
 		let stdout = ""
 		let stderr = ""
@@ -40,12 +40,12 @@ export const getInfo = async (url: string, args: string[] = []): Promise<YouTube
 		})
 
 		process.once("error", (error) => {
-			reject(new Error(`Failed to start youtube-dl: ${error.message}`))
+			reject(new Error(`Failed to start yt-dlp: ${error.message}`))
 		})
 
 		process.once("close", (code) => {
 			if (code && code !== 0) {
-				reject(new Error(stderr.trim() || `youtube-dl exited with code ${code}`))
+				reject(new Error(stderr.trim() || `yt-dlp exited with code ${code}`))
 				return
 			}
 
@@ -53,7 +53,7 @@ export const getInfo = async (url: string, args: string[] = []): Promise<YouTube
 				const info = JSON.parse(stdout)
 
 				// Логируем полученную информацию
-				console.log('=== YOUTUBE-DL INFO ===')
+				console.log('=== yt-dlp INFO ===')
 				console.log('Title:', info.title)
 				console.log('Duration:', info.duration)
 				console.log('Uploader:', info.uploader)
@@ -69,7 +69,7 @@ export const getInfo = async (url: string, args: string[] = []): Promise<YouTube
 
 				resolve(info)
 			} catch (error) {
-				reject(new Error(`Failed to parse youtube-dl output: ${String(error)}`))
+				reject(new Error(`Failed to parse yt-dlp output: ${String(error)}`))
 			}
 		})
 	})
@@ -82,7 +82,7 @@ export const downloadFromInfo = (
 ): { stdout: Readable } => {
 
 	console.log('=== DOWNLOAD ARGS ===')
-	console.log('youtube-dl args:', [
+	console.log('yt-dlp args:', [
 		"--newline",
 		"--no-playlist",
 		"--merge-output-format", "mp4",
@@ -93,7 +93,7 @@ export const downloadFromInfo = (
 	])
 	console.log('====================')
 
-	const process = spawn("youtube-dl", [
+	const process = spawn("yt-dlp", [
 		"--newline",  // Выводить прогресс построчно для легкого парсинга
 		"--no-playlist",
 		"--merge-output-format", "mp4",
