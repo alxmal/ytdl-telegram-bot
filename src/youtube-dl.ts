@@ -85,7 +85,6 @@ export const downloadFromInfo = (
 	console.log('yt-dlp args:', [
 		"--newline",
 		"--no-playlist",
-		"--merge-output-format", "mp4",
 		"-o",
 		output,
 		...args,
@@ -96,7 +95,6 @@ export const downloadFromInfo = (
 	const process = spawn("yt-dlp", [
 		"--newline",  // Выводить прогресс построчно для легкого парсинга
 		"--no-playlist",
-		"--merge-output-format", "mp4",
 		"-o",
 		output,
 		...args,
