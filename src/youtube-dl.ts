@@ -97,7 +97,7 @@ export const downloadFromInfo = (
 		"--no-playlist",
 		//"--merge-output-format", "mp4",
 		"--postprocessor-args",
-		"ffmpeg:-c:v libx264 -c:a aac -preset fast -crf 23 -movflags +faststart",
+		"ffmpeg: -c:v libx265 -crf 23  preset medium -c:a aac -b:a 128k -tag:v hvc1 -movflags +faststart",
 		"-o",
 		output,
 		...args,
