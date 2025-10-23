@@ -14,8 +14,8 @@ COPY src ./src
 RUN apk add --no-cache python3 ffmpeg curl
 
 # youtube-dl nightly (zipimport executable)
-RUN curl -fsSL https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp_linux -o /usr/local/bin/youtube-dl \
-	&& chmod +x /usr/local/bin/youtube-dlp
+RUN curl -fsSL https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
+	&& chmod +x /usr/local/bin/yt-dlp
 
 # (опционально) очистить кэш один раз, если были сигнатурные ошибки
 # RUN /usr/local/bin/youtube-dl --rm-cache-dir
