@@ -95,6 +95,9 @@ export const downloadFromInfo = (
 	const process = spawn("yt-dlp", [
 		"--newline",  // Выводить прогресс построчно для легкого парсинга
 		"--no-playlist",
+		"--merge-output-format", "mp4",
+		"--postprocessor-args",
+		"ffmpeg:-c:v copy -c:a copy -movflags +faststart",
 		"-o",
 		output,
 		...args,
