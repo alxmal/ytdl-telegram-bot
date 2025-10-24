@@ -81,21 +81,21 @@ export const downloadFromInfo = (
 	onProgress?: (progress: string) => void
 ): { stdout: Readable } => {
 
-	console.log('=== DOWNLOAD ARGS ===')
-	console.log('yt-dlp args:', [
-		"--newline",
-		"--no-playlist",
-		"-o",
-		output,
-		...args,
-		info.webpage_url || info.url || "",
-	])
-	console.log('====================')
+	// console.log('=== DOWNLOAD ARGS ===')
+	// console.log('yt-dlp args:', [
+	// 	"--newline",
+	// 	"--no-playlist",
+	// 	"-o",
+	// 	output,
+	// 	...args,
+	// 	info.webpage_url || info.url || "",
+	// ])
+	// console.log('====================')
 
 	const process = spawn("yt-dlp", [
 		"--newline",  // Выводить прогресс построчно для легкого парсинга
 		"--no-playlist",
-		"-t mp4",
+		"-t", "mp4",
 		output,
 		...args,
 		info.webpage_url || info.url || "",
