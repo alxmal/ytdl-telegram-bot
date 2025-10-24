@@ -1,6 +1,6 @@
 import { Context, InputFile } from "grammy"
 import { removeHashtagsMentions } from './util'
-import { downloadFromInfo, downloadToFile, getInfo } from './youtube-dl'
+import { downloadFromInfo, getInfo } from './youtube-dl'
 import { deleteMessage, errorMessage } from './bot-util'
 import type { Queue } from "./queue"
 import { cookieArgs } from './environment'
@@ -105,8 +105,6 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 					info.formats?.find((f) => f.vcodec !== "none" && f.acodec !== "none" && typeof f.url === "string")
 					?? info.formats?.find((f) => typeof f.url === "string")
 
-				// const suitableFormat = info.formats?.find((f) => typeof f.url === "string")
-
 				if (!suitableFormat?.url) throw new Error("No suitable format available")
 
 				console.log('=== SELECTED FORMAT ===')
@@ -162,21 +160,8 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 
 					const stream = downloadFromInfo(info, "-", ["-f", formatSelector], updateProgress)
 
-					// const tmpFile = await downloadFromInfo(info, "-", ["-f", formatSelector], updateProgress)
-
-					// const video = new InputFile(stream.stdout, title)
-					// const video = new InputFile(tmpFile.stdout, title)
-					// await ctx.replyWithVideo(video, { caption: title, supports_streaming: true, duration: info.duration })
-					// ok = true;
-
-					const tempFile = await downloadToFile(info, ["-f", formatSelector], updateProgress)
-					const video = new InputFile(tempFile, title)
+					const video = new InputFile(stream.stdout, title)
 					await ctx.replyWithVideo(video, { caption: title, supports_streaming: true, duration: info.duration })
-
-					// // Удаляем файл
-					// unlink(tempFile, (err) => {
-					// 	if (err) console.error('Failed to delete temp file:', err)
-					// })
 
 					logger.info('Video sent successfully', {
 						chatId: ctx.chat?.id,
@@ -186,63 +171,6 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 						url: href
 					})
 				}
-				// } else if (suitableFormat.acodec !== "none") {
-				// 	// Функция обновления прогресса для аудио
-				// 	let lastUpdateTime = 0
-				// 	let accumulatedOutput = ''  // Накапливаем вывод
-
-				// 	const updateProgress = (progressOutput: string) => {
-				// 		const now = Date.now()
-
-				// 		// Накапливаем вывод
-				// 		accumulatedOutput += progressOutput
-
-				// 		// Обновляем раз в 1 секунду
-				// 		if (now - lastUpdateTime > 1000) {
-				// 			lastUpdateTime = now
-
-				// 			const progress = parseYoutubeDLProgress(accumulatedOutput)
-
-				// 			logger.debug('Parsed progress from youtube-dl audio', {
-				// 				progress,
-				// 				hasProgress: progress !== null,
-				// 				hasChatId: !!ctx.chat?.id,
-				// 				outputSample: progressOutput.substring(0, 100)
-				// 			})
-
-				// 			if (progress !== null && ctx.chat?.id) {
-				// 				logger.debug('Updating audio download progress', { progress })
-				// 				ctx.api.editMessageText(
-				// 					ctx.chat.id,
-				// 					processingMessage.message_id,
-				// 					`⬇️ Загружаю\n${createProgressBar(progress)} ${progress}%`
-				// 				).catch((err) => {
-				// 					logger.warn('Failed to update progress message', { error: err.message })
-				// 				})
-				// 			}
-				// 		}
-				// 	}
-
-				// 	const stream = downloadFromInfo(info, "-", ["-x", "--audio-format", "mp3"], updateProgress)
-				// 	const audio = new InputFile(stream.stdout)
-				// 	await ctx.replyWithAudio(audio, {
-				// 		caption: title,
-				// 		performer: info.uploader,
-				// 		title: info.title,
-				// 		thumbnail: getThumbnail(info.thumbnails),
-				// 		duration: info.duration,
-				// 	})
-				// 	ok = true;
-
-				// 	logger.info('Audio sent successfully', {
-				// 		chatId: ctx.chat?.id,
-				// 		userId: ctx.from?.id,
-				// 		title: title,
-				// 		performer: info.uploader,
-				// 		duration: info.duration,
-				// 		url: href
-				// 	})
-				// }
 			} catch (error) {
 				logger.error('Video processing failed', {
 					chatId: ctx.chat?.id,

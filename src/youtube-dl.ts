@@ -90,7 +90,8 @@ export const downloadFromInfo = (
 	console.log('yt-dlp args:', [
 		"--newline",
 		"--no-playlist",
-		"-o", tempFile,  // ← yt-dlp пишет в файл
+		"--merge-output-format", "mp4",
+		"-o", tempFile,
 		...args,
 		info.webpage_url || info.url || "",
 	])
@@ -142,37 +143,4 @@ export const downloadFromInfo = (
 	})
 
 	return { stdout: stream }
-}
-
-export const downloadToFile = async (
-	info: YouTubeDLInfo,
-	args: string[] = [],
-	onProgress?: (progress: string) => void
-): Promise<string> => {
-
-	const tempFile = join(tmpdir(), `ytdl_${Date.now()}.mp4`)
-
-	return new Promise((resolve, reject) => {
-		const process = spawn("yt-dlp", [
-			"--newline",
-			"--no-playlist",
-			"-o", tempFile,
-			...args,
-			info.webpage_url || info.url || "",
-		])
-
-		if (onProgress) {
-			process.stderr?.on('data', (data) => {
-				onProgress(data.toString())
-			})
-		}
-
-		process.once('close', (code) => {
-			if (code === 0) {
-				resolve(tempFile)  // Возвращаем путь к файлу
-			} else {
-				reject(new Error(`yt-dlp exited with code ${code}`))
-			}
-		})
-	})
 }

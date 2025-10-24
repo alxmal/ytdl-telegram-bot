@@ -11,7 +11,7 @@ RUN pnpm install --frozen-lockfile
 COPY src ./src
 
 # deps
-RUN apk add --no-cache python3 ffmpeg curl chromium
+RUN apk add --no-cache python3 ffmpeg curl
 
 # youtube-dl nightly (zipimport executable)
 RUN curl -fsSL https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
