@@ -114,32 +114,30 @@ export const downloadFromInfo = (
 	// Создаем Readable stream, который ждет завершения
 	const stream = new Readable({
 		read() {
-			// Ждем завершения процесса
-			process.on('close', (code) => {
-				if (code === 0) {
-					// Создаем поток из файла
-					const fileStream = createReadStream(tempFile)
+		}
+	})
 
-					// Передаем данные в наш stream
-					fileStream.on('data', (chunk) => {
-						this.push(chunk)
-					})
+	// ОДИН раз добавляем listener
+	process.once('close', (code) => {
+		if (code === 0) {
+			const fileStream = createReadStream(tempFile)
 
-					fileStream.on('end', () => {
-						this.push(null) // Завершаем stream
-						// Удаляем временный файл
-						unlink(tempFile, (err) => {
-							if (err) console.error('Failed to delete temp file:', err)
-						})
-					})
-
-					fileStream.on('error', (err) => {
-						this.destroy(err)
-					})
-				} else {
-					this.destroy(new Error(`yt-dlp exited with code ${code}`))
-				}
+			fileStream.on('data', (chunk) => {
+				stream.push(chunk)
 			})
+
+			fileStream.on('end', () => {
+				stream.push(null)
+				unlink(tempFile, (err) => {
+					if (err) console.error('Failed to delete temp file:', err)
+				})
+			})
+
+			fileStream.on('error', (err) => {
+				stream.destroy(err)
+			})
+		} else {
+			stream.destroy(new Error(`yt-dlp exited with code ${code}`))
 		}
 	})
 
