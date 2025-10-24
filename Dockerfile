@@ -9,7 +9,6 @@ RUN corepack enable && corepack prepare pnpm@10 --activate
 RUN pnpm install --frozen-lockfile
 
 COPY src ./src
-COPY cookies.txt ./cookies.txt
 
 # deps
 RUN apk add --no-cache python3 ffmpeg curl chromium
