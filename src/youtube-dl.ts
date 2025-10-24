@@ -1,5 +1,8 @@
 // src/yt-dlp.ts
 import { spawn } from "node:child_process"
+import { createReadStream, unlink } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { Readable } from "node:stream"
 
 export interface YouTubeDLInfo {
@@ -81,22 +84,25 @@ export const downloadFromInfo = (
 	onProgress?: (progress: string) => void
 ): { stdout: Readable } => {
 
-	// console.log('=== DOWNLOAD ARGS ===')
-	// console.log('yt-dlp args:', [
-	// 	"--newline",
-	// 	"--no-playlist",
-	// 	"-o",
-	// 	output,
-	// 	...args,
-	// 	info.webpage_url || info.url || "",
-	// ])
-	// console.log('====================')
+	// Создаем временный файл
+	const tempFile = join(tmpdir(), `ytdl_${Date.now()}_${Math.random().toString(36).substring(2, 9)}.mp4`)
+
+	console.log('=== DOWNLOAD ARGS ===')
+	console.log('yt-dlp args:', [
+		"--newline",
+		"--no-playlist",
+		"--merge-output-format", "mp4",
+		"-o", tempFile,  // ← Сохраняем в файл
+		...args,
+		info.webpage_url || info.url || "",
+	])
+	console.log('====================')
 
 	const process = spawn("yt-dlp", [
 		"--newline",  // Выводить прогресс построчно для легкого парсинга
 		"--no-playlist",
 		"-o",
-		output,
+		tempFile,
 		...args,
 		info.webpage_url || info.url || "",
 	])
@@ -108,5 +114,16 @@ export const downloadFromInfo = (
 		})
 	}
 
-	return { stdout: process.stdout }
+	// Создаем Readable stream из файла
+	const fileStream = createReadStream(tempFile)
+
+	// Удаляем файл после завершения чтения
+	fileStream.on('end', () => {
+		unlink(tempFile, (err: any) => {
+			if (err) console.error('Failed to delete temp file:', err)
+		})
+	})
+
+	return { stdout: fileStream }
+	// return { stdout: process.stdout }
 }
