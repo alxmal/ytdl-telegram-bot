@@ -84,46 +84,64 @@ export const downloadFromInfo = (
 	onProgress?: (progress: string) => void
 ): { stdout: Readable } => {
 
-	// Создаем временный файл
-	const tempFile = join(tmpdir(), `ytdl_${Date.now()}_${Math.random().toString(36).substring(2, 9)}.mp4`)
+	const tempFile = join(tmpdir(), `ytdl_${Date.now()}.%(ext)s`)
 
 	console.log('=== DOWNLOAD ARGS ===')
 	console.log('yt-dlp args:', [
 		"--newline",
 		"--no-playlist",
-		"--merge-output-format", "mp4",
-		"-o", tempFile,  // ← Сохраняем в файл
+		"-o", tempFile,  // ← yt-dlp пишет в файл
 		...args,
 		info.webpage_url || info.url || "",
 	])
 	console.log('====================')
 
 	const process = spawn("yt-dlp", [
-		"--newline",  // Выводить прогресс построчно для легкого парсинга
+		"--newline",
 		"--no-playlist",
-		"-o",
-		tempFile,
+		"-o", tempFile,  // ← yt-dlp пишет в файл
 		...args,
 		info.webpage_url || info.url || "",
 	])
 
-	// Передаём stderr если нужен прогресс
+	// Обработка прогресса
 	if (onProgress) {
 		process.stderr?.on('data', (data) => {
 			onProgress(data.toString())
 		})
 	}
 
-	// Создаем Readable stream из файла
-	const fileStream = createReadStream(tempFile)
+	// Создаем Readable stream, который ждет завершения
+	const stream = new Readable({
+		read() {
+			// Ждем завершения процесса
+			process.on('close', (code) => {
+				if (code === 0) {
+					// Создаем поток из файла
+					const fileStream = createReadStream(tempFile)
 
-	// Удаляем файл после завершения чтения
-	fileStream.on('end', () => {
-		unlink(tempFile, (err: any) => {
-			if (err) console.error('Failed to delete temp file:', err)
-		})
+					// Передаем данные в наш stream
+					fileStream.on('data', (chunk) => {
+						this.push(chunk)
+					})
+
+					fileStream.on('end', () => {
+						this.push(null) // Завершаем stream
+						// Удаляем временный файл
+						unlink(tempFile, (err) => {
+							if (err) console.error('Failed to delete temp file:', err)
+						})
+					})
+
+					fileStream.on('error', (err) => {
+						this.destroy(err)
+					})
+				} else {
+					this.destroy(new Error(`yt-dlp exited with code ${code}`))
+				}
+			})
+		}
 	})
 
-	return { stdout: fileStream }
-	// return { stdout: process.stdout }
+	return { stdout: stream }
 }
