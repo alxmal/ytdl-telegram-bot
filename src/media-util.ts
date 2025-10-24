@@ -81,7 +81,7 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 		queue.add(async () => {
 			try {
 				const isYouTubeMusic = urlMatcher(href, "music.youtube.com")
-				const formatSelector = "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]"
+				const formatSelector = "best[ext=mp4][vcodec^=avc1][acodec^=mp4a][height<=1080]"
 				const info = await getInfo(href, ["-f", formatSelector, "--no-playlist", ...(await cookieArgs())])
 
 				// Обновляем сообщение после получения информации
@@ -101,23 +101,10 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 					url: href
 				})
 
-				const suitableFormat =
-					info.formats?.find((f) => f.vcodec !== "none" && f.acodec !== "none" && typeof f.url === "string")
-					?? info.formats?.find((f) => typeof f.url === "string")
-
-				if (!suitableFormat?.url) throw new Error("No suitable format available")
-
-				console.log('=== SELECTED FORMAT ===')
-				console.log('Selected format:', {
-					format_id: suitableFormat.format_id,
-					ext: suitableFormat.ext,
-					vcodec: suitableFormat.vcodec,
-					acodec: suitableFormat.acodec,
-					height: suitableFormat.height,
-					width: suitableFormat.width,
-					url: suitableFormat.url ? 'HAS_URL' : 'NO_URL'
-				})
-				console.log('======================')
+				// Проверяем что есть доступные форматы
+				if (!info.formats || info.formats.length === 0) {
+					throw new Error("No formats available")
+				}
 
 				const title = removeHashtagsMentions(info.title)
 
@@ -158,10 +145,15 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 						}
 					}
 
-					const stream = downloadFromInfo(info, "-", ["-f", formatSelector], updateProgress)
+					const tempFile = await downloadFromInfo(info, ["-f", formatSelector], updateProgress)
 
-					const video = new InputFile(stream.stdout, title)
+					const video = new InputFile(tempFile)
 					await ctx.replyWithVideo(video, { caption: title, supports_streaming: true, duration: info.duration })
+
+					// Удаляем временный файл после отправки
+					unlink(tempFile, (err) => {
+						if (err) logger.error('Failed to delete temp file', { error: err.message })
+					})
 
 					logger.info('Video sent successfully', {
 						chatId: ctx.chat?.id,

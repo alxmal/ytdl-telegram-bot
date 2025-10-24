@@ -1,9 +1,7 @@
 // src/yt-dlp.ts
 import { spawn } from "node:child_process"
-import { createReadStream, unlink } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { Readable } from "node:stream"
 
 export interface YouTubeDLInfo {
 	title: string
@@ -66,7 +64,7 @@ export const getInfo = async (url: string, args: string[] = []): Promise<YouTube
 					ext: f.ext,
 					vcodec: f.vcodec,
 					acodec: f.acodec,
-					url: f.url ? 'HAS_URL' : 'NO_URL'
+					url: f.url ? f.url : 'NO_URL'
 				})))
 				console.log('======================')
 
@@ -77,13 +75,11 @@ export const getInfo = async (url: string, args: string[] = []): Promise<YouTube
 		})
 	})
 
-export const downloadFromInfo = (
+export const downloadFromInfo = async (
 	info: YouTubeDLInfo,
-	output: string,
 	args: string[] = [],
 	onProgress?: (progress: string) => void
-): { stdout: Readable } => {
-
+): Promise<string> => {
 	const tempFile = join(tmpdir(), `ytdl_${Date.now()}.mp4`)
 
 	console.log('=== DOWNLOAD ARGS ===')
@@ -97,50 +93,33 @@ export const downloadFromInfo = (
 	])
 	console.log('====================')
 
-	const process = spawn("yt-dlp", [
-		"--newline",
-		"--no-playlist",
-		"-o", tempFile,  // ← yt-dlp пишет в файл
-		...args,
-		info.webpage_url || info.url || "",
-	])
+	return new Promise((resolve, reject) => {
+		const process = spawn("yt-dlp", [
+			"--newline",
+			"--no-playlist",
+			"--merge-output-format", "mp4",
+			"-o", tempFile,
+			...args,
+			info.webpage_url || info.url || "",
+		])
 
-	// Обработка прогресса
-	if (onProgress) {
-		process.stderr?.on('data', (data) => {
-			onProgress(data.toString())
+		// Обработка прогресса
+		if (onProgress) {
+			process.stderr?.on('data', (data) => {
+				onProgress(data.toString())
+			})
+		}
+
+		process.once('close', (code) => {
+			if (code === 0) {
+				resolve(tempFile)
+			} else {
+				reject(new Error(`yt-dlp exited with code ${code}`))
+			}
 		})
-	}
 
-	// Создаем Readable stream, который ждет завершения
-	const stream = new Readable({
-		read() {
-		}
+		process.once('error', (error) => {
+			reject(new Error(`Failed to start yt-dlp: ${error.message}`))
+		})
 	})
-
-	// ОДИН раз добавляем listener
-	process.once('close', (code) => {
-		if (code === 0) {
-			const fileStream = createReadStream(tempFile)
-
-			fileStream.on('data', (chunk) => {
-				stream.push(chunk)
-			})
-
-			fileStream.on('end', () => {
-				stream.push(null)
-				unlink(tempFile, (err) => {
-					if (err) console.error('Failed to delete temp file:', err)
-				})
-			})
-
-			fileStream.on('error', (err) => {
-				stream.destroy(err)
-			})
-		} else {
-			stream.destroy(new Error(`yt-dlp exited with code ${code}`))
-		}
-	})
-
-	return { stdout: stream }
 }
