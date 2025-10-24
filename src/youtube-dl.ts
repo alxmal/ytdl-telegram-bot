@@ -84,7 +84,7 @@ export const downloadFromInfo = (
 	onProgress?: (progress: string) => void
 ): { stdout: Readable } => {
 
-	const tempFile = join(tmpdir(), `ytdl_${Date.now()}.%(ext)s`)
+	const tempFile = join(tmpdir(), `ytdl_${Date.now()}.mp4`)
 
 	console.log('=== DOWNLOAD ARGS ===')
 	console.log('yt-dlp args:', [
