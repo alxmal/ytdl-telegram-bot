@@ -161,7 +161,7 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 
 					// const stream = downloadFromInfo(info, "-", ["-f", formatSelector], updateProgress)
 
-					const tmpFile = await downloadFromInfo(info, "-", [], updateProgress)
+					const tmpFile = await downloadFromInfo(info, "-", ["-f", formatSelector], updateProgress)
 
 					// const video = new InputFile(stream.stdout, title)
 					const video = new InputFile(tmpFile.stdout, title)
