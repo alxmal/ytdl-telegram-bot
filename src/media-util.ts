@@ -80,7 +80,7 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 		queue.add(async () => {
 			try {
 				const isYouTubeMusic = urlMatcher(href, "music.youtube.com")
-				const formatSelector = "bv+ba/b"
+				const formatSelector = "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]"
 				const info = await getInfo(href, ["-f", formatSelector, "--no-playlist", ...(await cookieArgs())])
 
 				// Обновляем сообщение после получения информации
@@ -159,9 +159,9 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 						}
 					}
 
-					// const stream = downloadFromInfo(info, "-", ["-f", formatSelector], updateProgress)
+					const stream = downloadFromInfo(info, "-", ["-f", formatSelector], updateProgress)
 
-					const stream = downloadFromInfo(info, "-", [], updateProgress)
+					// const stream = downloadFromInfo(info, "-", [], updateProgress)
 					const video = new InputFile(stream.stdout, title)
 					await ctx.replyWithVideo(video, { caption: title, supports_streaming: true, duration: info.duration })
 					ok = true;

@@ -95,7 +95,6 @@ export const downloadFromInfo = (
 	const process = spawn("yt-dlp", [
 		"--newline",  // Выводить прогресс построчно для легкого парсинга
 		"--no-playlist",
-		"-t", "mp4",
 		output,
 		...args,
 		info.webpage_url || info.url || "",
