@@ -1,11 +1,12 @@
 import { Context, InputFile } from "grammy"
 import { removeHashtagsMentions } from './util'
-import { downloadFromInfo, getInfo } from './youtube-dl'
+import { downloadFromInfo, downloadToFile, getInfo } from './youtube-dl'
 import { deleteMessage, errorMessage } from './bot-util'
 import type { Queue } from "./queue"
 import { cookieArgs } from './environment'
 import logger from './logger'
 import { parseYoutubeDLProgress, createProgressBar } from './ffmpeg-util'
+import { unlink } from 'node:fs'
 
 type Thumbnail = {
 	url: string
@@ -120,7 +121,7 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 				})
 				console.log('======================')
 
-				const title = removeHashtagsMentions(info.title)
+				const title = removeHashtagsMentions(info.title || '')
 
 				if (!isYouTubeMusic) {
 					// Функция обновления прогресса для видео
@@ -161,12 +162,21 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 
 					// const stream = downloadFromInfo(info, "-", ["-f", formatSelector], updateProgress)
 
-					const tmpFile = await downloadFromInfo(info, "-", ["-f", formatSelector], updateProgress)
+					// const tmpFile = await downloadFromInfo(info, "-", ["-f", formatSelector], updateProgress)
 
 					// const video = new InputFile(stream.stdout, title)
-					const video = new InputFile(tmpFile.stdout, title)
+					// const video = new InputFile(tmpFile.stdout, title)
+					// await ctx.replyWithVideo(video, { caption: title, supports_streaming: true, duration: info.duration })
+					// ok = true;
+
+					const tempFile = await downloadToFile(info, ["-f", formatSelector], updateProgress)
+					const video = new InputFile(tempFile, title)
 					await ctx.replyWithVideo(video, { caption: title, supports_streaming: true, duration: info.duration })
-					ok = true;
+
+					// Удаляем файл
+					unlink(tempFile, (err) => {
+						if (err) console.error('Failed to delete temp file:', err)
+					})
 
 					logger.info('Video sent successfully', {
 						chatId: ctx.chat?.id,
