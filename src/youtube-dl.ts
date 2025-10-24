@@ -156,7 +156,6 @@ export const downloadToFile = async (
 		const process = spawn("yt-dlp", [
 			"--newline",
 			"--no-playlist",
-			"--cookies-from-browser", "chrome",
 			"-o", tempFile,
 			...args,
 			info.webpage_url || info.url || "",

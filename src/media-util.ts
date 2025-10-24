@@ -160,7 +160,7 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 						}
 					}
 
-					// const stream = downloadFromInfo(info, "-", ["-f", formatSelector], updateProgress)
+					const stream = downloadFromInfo(info, "-", ["-f", formatSelector], updateProgress)
 
 					// const tmpFile = await downloadFromInfo(info, "-", ["-f", formatSelector], updateProgress)
 
@@ -173,10 +173,10 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 					const video = new InputFile(tempFile, title)
 					await ctx.replyWithVideo(video, { caption: title, supports_streaming: true, duration: info.duration })
 
-					// Удаляем файл
-					unlink(tempFile, (err) => {
-						if (err) console.error('Failed to delete temp file:', err)
-					})
+					// // Удаляем файл
+					// unlink(tempFile, (err) => {
+					// 	if (err) console.error('Failed to delete temp file:', err)
+					// })
 
 					logger.info('Video sent successfully', {
 						chatId: ctx.chat?.id,
