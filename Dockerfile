@@ -9,16 +9,14 @@ RUN corepack enable && corepack prepare pnpm@10 --activate
 RUN pnpm install --frozen-lockfile
 
 COPY src ./src
+COPY cookies.txt ./cookies.txt
 
 # deps
-RUN apk add --no-cache python3 ffmpeg curl
+RUN apk add --no-cache python3 ffmpeg curl chromium
 
 # youtube-dl nightly (zipimport executable)
 RUN curl -fsSL https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
 	&& chmod +x /usr/local/bin/yt-dlp
-
-# (опционально) очистить кэш один раз, если были сигнатурные ошибки
-# RUN /usr/local/bin/youtube-dl --rm-cache-dir
 
 # Создаем директорию для cookies
 RUN mkdir -p /app/storage

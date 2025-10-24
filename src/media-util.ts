@@ -121,7 +121,7 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 				})
 				console.log('======================')
 
-				const title = removeHashtagsMentions(info.title || '')
+				const title = removeHashtagsMentions(info.title)
 
 				if (!isYouTubeMusic) {
 					// Функция обновления прогресса для видео
