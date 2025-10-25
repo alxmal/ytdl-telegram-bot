@@ -149,6 +149,7 @@ export async function processVideoRequest(ctx: Context, href: string, queue: Que
 
 					const video = new InputFile(tempFile)
 					await ctx.replyWithVideo(video, { caption: title, supports_streaming: true, duration: info.duration })
+					ok = true
 
 					// Удаляем временный файл после отправки
 					unlink(tempFile, (err) => {
