@@ -13,11 +13,11 @@ COPY src ./src
 # deps
 RUN apk add --no-cache python3 ffmpeg curl bash unzip
 
-# youtube-dl nightly (zipimport executable)
+# yt-dlp nightly
 RUN curl -fsSL https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
 	&& chmod +x /usr/local/bin/yt-dlp
 
-# Создаем директорию для cookies
+# make cookie dir
 RUN mkdir -p /app/storage
 
 EXPOSE ${TELEGRAM_WEBHOOK_PORT}
