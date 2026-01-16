@@ -19,9 +19,6 @@ RUN curl -fsSL https://deno.land/install.sh | sh
 # Add the Deno installation directory to the PATH environment variable
 ENV PATH="/root/.deno/bin:$PATH"
 
-# Verify the installation
-RUN deno --version
-
 # youtube-dl nightly (zipimport executable)
 RUN curl -fsSL https://github.com/yt-dlp/yt-dlp-nightly-builds/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
 	&& chmod +x /usr/local/bin/yt-dlp
