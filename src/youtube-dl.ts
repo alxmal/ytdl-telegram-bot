@@ -88,7 +88,6 @@ export const downloadFromInfo = async (
 		"--no-playlist",
 		"--merge-output-format", "mp4",
 		"-o", tempFile,
-		"--extractor-args", "youtube:player_client=default,-web_safari",
 		...args,
 		info.webpage_url || info.url || "",
 	])
