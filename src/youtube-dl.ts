@@ -95,7 +95,7 @@ export const downloadFromInfo = async (
 
 	return new Promise((resolve, reject) => {
 		const process = spawn("yt-dlp", [
-			"--js-runtimes node",
+			"--js-runtimes", "node",
 			"--newline",
 			"--no-playlist",
 			"--merge-output-format", "mp4",
