@@ -11,7 +11,7 @@ RUN pnpm install --frozen-lockfile
 COPY src ./src
 
 # deps
-RUN apk add --no-cache python3 ffmpeg curl
+RUN apk add --no-cache python3 ffmpeg curl bash unzip
 
 # Run the Deno installation script
 RUN curl -fsSL https://deno.land/install.sh | sh
